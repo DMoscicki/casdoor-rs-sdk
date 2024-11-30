@@ -20,6 +20,8 @@ Or add the following line to your Cargo.toml:
 casdoor-rs-sdk = "2"
 ```
 
+Also, `openssl` must be installed on your system.
+
 ## Example
 
 ```rust
