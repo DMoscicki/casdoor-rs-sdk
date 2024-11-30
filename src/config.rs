@@ -2,6 +2,7 @@ use std::{fs::File, io::Read};
 
 use cubix::getset2::Getters;
 use serde::{Deserialize, Serialize};
+use openssl::{error::ErrorStack, pkey::{PKey, Public}, x509::X509};
 
 /// Config is the core configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, Getters)]
@@ -35,7 +36,7 @@ impl Config {
             endpoint: endpoint.into(),
             client_id: client_id.into(),
             client_secret: client_secret.into(),
-            certificate: Self::replace_cert_to_pub_key(certificate.into()),
+            certificate: certificate.into(),
             org_name: org_name.into(),
             app_name,
         }
@@ -48,15 +49,13 @@ impl Config {
         let mut content = String::new();
         file.read_to_string(&mut content)?;
 
-        let mut conf: Config = toml::from_str(&content)?;
-
-        // need to convert the certificate to pem format
-        conf.certificate = Self::replace_cert_to_pub_key(conf.certificate);
+        let conf: Config = toml::from_str(&content)?;
 
         Ok(conf)
     }
 
-    fn replace_cert_to_pub_key(certificate: String) -> String {
-        certificate.replace("CERTIFICATE", "PUBLIC KEY")
+    pub fn replace_cert_to_pub_key(&self) -> Result<PKey<Public>, ErrorStack> {
+        let cert_x509 = &X509::from_pem(self.certificate.as_bytes()).unwrap();
+        cert_x509.public_key()
     }
 }

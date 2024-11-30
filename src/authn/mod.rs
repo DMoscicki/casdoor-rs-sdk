@@ -60,7 +60,12 @@ impl AuthSdk {
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_audience(&[self.sdk.client_id()]);
 
-        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(self.sdk.certificate().as_bytes())?, &validation)?;
+        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
+
+        let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
+
+        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(&public_key)?, &validation)?;
+
         Ok(td.claims)
     }
 
@@ -68,7 +73,11 @@ impl AuthSdk {
         let mut validation: Validation = Validation::new(Algorithm::RS512);
         validation.set_audience(&[self.sdk.client_id()]);
 
-        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(self.sdk.certificate().as_bytes())?, &validation)?;
+        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
+
+        let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
+
+        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(&public_key)?, &validation)?;
 
         Ok(td.claims)
     }
@@ -77,9 +86,13 @@ impl AuthSdk {
         let mut validation: Validation = Validation::new(Algorithm::ES256);
         validation.set_audience(&[self.sdk.client_id()]);
 
-        let decode_key = &DecodingKey::from_ec_pem(self.sdk.certificate().as_bytes())?;
+        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let token_data: TokenData<Claims> = jsonwebtoken::decode(&token, &decode_key, &validation)?;
+        let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
+
+        let decode_key = &DecodingKey::from_ec_pem(&public_key)?;
+
+        let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation)?;
 
         Ok(token_data.claims)
     }
@@ -88,9 +101,13 @@ impl AuthSdk {
         let mut validation: Validation = Validation::new(Algorithm::ES384);
         validation.set_audience(&[self.sdk.client_id()]);
 
-        let decode_key = &DecodingKey::from_ec_pem(self.sdk.certificate().as_bytes())?;
+        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let token_data: TokenData<Claims> = jsonwebtoken::decode(&token, &decode_key, &validation)?;
+        let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
+
+        let decode_key = &DecodingKey::from_ec_pem(&public_key)?;
+
+        let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation)?;
 
         Ok(token_data.claims)
     }
@@ -173,7 +190,7 @@ mod tests {
             "http://localhost:8000", 
             "e953686f04e7055b698b", 
             "secret", 
-            cert, 
+            cert,
             "org_name", 
             Some("app_name".to_owned()),
         ).into_sdk();
@@ -192,7 +209,7 @@ mod tests {
             "http://localhost:8000", 
             "e953686f04e7055b698b", 
             "secret", 
-            cert, 
+            cert,
             "org_name", 
             Some("app_name".to_owned()),
         ).into_sdk();
@@ -211,7 +228,7 @@ mod tests {
             "http://localhost:8000", 
             "e953686f04e7055b698b", 
             "secret", 
-            cert, 
+            cert,
             "org_name", 
             Some("app_name".to_owned()),
         ).into_sdk();

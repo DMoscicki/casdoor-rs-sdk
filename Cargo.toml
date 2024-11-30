@@ -27,6 +27,7 @@ salvo = { version = ">=0.74", default-features = false, features = [
     "oapi",
 ], optional = true }
 casdoor-api = { package = "casdoor-sdk", version = "2.0.4", optional = true }
+openssl = "0.10.68"
 
 [features]
 # default = ["api", "salvo"]
