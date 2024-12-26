@@ -3,7 +3,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
 use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
 pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
-
+use openssl::pkey::{PKey, Public};
 use crate::{Method, QueryArgs, QueryResult, Sdk, SdkResult, NO_BODY};
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -62,11 +62,9 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
+        let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
 
-        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(&public_key)?, &validation)?;
-
-        Ok(td.claims)
+        Ok(token_data.claims)
     }
 
     pub fn parse_jwt_token_rs512(&self, token: &str) -> SdkResult<Claims> {
@@ -75,11 +73,9 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
+        let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
 
-        let td: TokenData<Claims> = jsonwebtoken::decode(token, &DecodingKey::from_rsa_pem(&public_key)?, &validation)?;
-
-        Ok(td.claims)
+        Ok(token_data.claims)
     }
 
     pub fn parse_jwt_token_es256(&self, token: &str) -> SdkResult<Claims> {
@@ -88,11 +84,7 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
-
-        let decode_key = &DecodingKey::from_ec_pem(&public_key)?;
-
-        let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation)?;
+        let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
 
         Ok(token_data.claims)
     }
@@ -103,11 +95,7 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
-
-        let decode_key = &DecodingKey::from_ec_pem(&public_key)?;
-
-        let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation)?;
+        let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
 
         Ok(token_data.claims)
     }
@@ -175,8 +163,22 @@ impl AuthSdk {
     }
 }
 
-#[cfg(test)]
+fn get_tk_es(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<Claims> {
+    let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
+    let decode_key = &DecodingKey::from_ec_pem(&public_key).unwrap();
+    let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
 
+    token_data
+}
+
+fn get_tk_rsa(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<Claims> {
+    let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
+    let decode_key = &DecodingKey::from_rsa_pem(&public_key).unwrap();
+    let td: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
+
+    td
+}
+#[cfg(test)]
 mod tests {
     use std::fs;
 
@@ -188,7 +190,7 @@ mod tests {
         let cert = fs::read_to_string("./src/authn/testdata/cert_es256.txt").unwrap();
         let cfg = Config::new(
             "http://localhost:8000", 
-            "e953686f04e7055b698b", 
+            "7883231e5f0792b5acdf",
             "secret", 
             cert,
             "org_name", 
@@ -207,7 +209,7 @@ mod tests {
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
             "http://localhost:8000", 
-            "e953686f04e7055b698b", 
+            "7883231e5f0792b5acdf",
             "secret", 
             cert,
             "org_name", 
@@ -223,13 +225,13 @@ mod tests {
     #[test]
     fn succesfully_rs512() {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs512.txt").unwrap();
-        let cert = fs::read_to_string("./src/authn/testdata/cert_rs512.txt").unwrap();
+        let cert = fs::read_to_string("./src/authn/testdata/cert_rs256.txt").unwrap();
         let cfg = Config::new(
             "http://localhost:8000", 
-            "e953686f04e7055b698b", 
+            "7883231e5f0792b5acdf",
             "secret", 
             cert,
-            "org_name", 
+            "org_name",
             Some("app_name".to_owned()),
         ).into_sdk();
 
