@@ -55,7 +55,7 @@ impl Config {
     }
 
     pub fn replace_cert_to_pub_key(&self) -> Result<PKey<Public>, ErrorStack> {
-        let cert_x509 = &X509::from_pem(self.certificate.as_bytes()).unwrap();
+        let cert_x509 = &X509::from_pem(self.certificate.as_bytes())?;
         cert_x509.public_key()
     }
 }
