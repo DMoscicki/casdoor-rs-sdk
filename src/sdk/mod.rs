@@ -2,7 +2,6 @@ mod errors;
 mod models;
 use std::{ops::Deref, sync::Arc};
 
-use cubix::MaybeString;
 pub use errors::*;
 pub use models::*;
 use serde::{
@@ -39,11 +38,11 @@ impl Sdk {
     }
 
     pub fn id(&self, name: &str) -> String {
-        format!("{}/{}", self.org_name(), name)
+        format!("{}/{}", self.org_name, name)
     }
 
     pub fn user_id_query(&self, user_name: &str) -> String {
-        serde_urlencoded::to_string([("userId", format!("{}/{}", self.org_name(), user_name))]).unwrap()
+        serde_urlencoded::to_string([("userId", format!("{}/{}", self.org_name, user_name))]).unwrap()
     }
 
     pub async fn request<Data, Data2>(
@@ -56,11 +55,14 @@ impl Sdk {
         Data: DeserializeOwned,
         Data2: DeserializeOwned,
     {
-        let url = self.config.endpoint().clone() + url_path.as_ref();
+        let mut url = String::from(&self.config.endpoint);
+        url.push_str(&url_path.as_ref().to_string());
+
         println!("{url}");
+        
         let mut req = reqwest::Client::new()
             .request(method, url)
-            .basic_auth(self.config.client_id().clone(), Some(self.config.client_secret().clone()));
+            .basic_auth(&self.config.client_id, Some(&self.config.client_secret));
         match body {
             Body::Json(body) => req = req.json(body),
             Body::Form(body) => req = req.form(body),
@@ -148,8 +150,8 @@ impl Sdk {
     }
 
     // Query and return some models and the total number of models.
-    pub(crate) async fn get_models<M: Model>(&self, mid_ident: impl Into<MaybeString>, query_args: impl IsQueryArgs) -> SdkResult<QueryResult<M>> {
-        let ident = if let Some(mid) = mid_ident.into().option_string() {
+    pub(crate) async fn get_models<M: Model>(&self, mid_ident: Option<String>, query_args: impl IsQueryArgs) -> SdkResult<QueryResult<M>> {
+        let ident = if let Some(mid) = mid_ident {
             "get-".to_owned() + &mid + "-"
         } else {
             "get-".to_owned()
@@ -167,7 +169,7 @@ impl Sdk {
 
     pub fn get_url_query_part(&self, add_owner_query: bool, query_args: impl Serialize) -> SdkResult<String> {
         let mut query = if add_owner_query {
-            format!("owner={}", self.org_name())
+            format!("owner={}", self.org_name)
         } else {
             String::new()
         };

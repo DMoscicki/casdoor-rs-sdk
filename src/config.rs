@@ -1,43 +1,41 @@
 use std::{fs::File, io::Read};
 
-use cubix::getset2::Getters;
 use serde::{Deserialize, Serialize};
 use openssl::{error::ErrorStack, pkey::{PKey, Public}, x509::X509};
 
 /// Config is the core configuration.
-#[derive(Debug, Clone, Serialize, Deserialize, Getters)]
-#[getset(get = "pub")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// Casdoor Server Url, such as `http://localhost:8000`
-    endpoint: String,
+    pub endpoint: String,
     /// Client ID for the Casdoor application
-    client_id: String,
+    pub client_id: String,
     /// Client secret for the Casdoor application
-    client_secret: String,
+    pub client_secret: String,
     /// x509 certificate content of Application.cert
-    certificate: String,
+    pub certificate: String,
     /// The name for the Casdoor organization
-    org_name: String,
+    pub org_name: String,
     /// The name for the Casdoor application
-    app_name: Option<String>,
+    pub app_name: Option<String>,
 }
 
 impl Config {
     /// Create a new Config.
     pub fn new(
-        endpoint: impl Into<String>,
-        client_id: impl Into<String>,
-        client_secret: impl Into<String>,
-        certificate: impl Into<String>,
-        org_name: impl Into<String>,
+        endpoint: String,
+        client_id: String,
+        client_secret: String,
+        certificate: String,
+        org_name: String,
         app_name: Option<String>,
     ) -> Self {
         Config {
-            endpoint: endpoint.into(),
-            client_id: client_id.into(),
-            client_secret: client_secret.into(),
-            certificate: certificate.into(),
-            org_name: org_name.into(),
+            endpoint: endpoint,
+            client_id: client_id,
+            client_secret: client_secret,
+            certificate: certificate,
+            org_name: org_name,
             app_name,
         }
     }

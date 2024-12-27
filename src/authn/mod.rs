@@ -5,8 +5,7 @@ pub use models::*;
 use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
 pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
 use openssl::pkey::{PKey, Public};
-use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, StatusCode, NO_BODY};
-use crate::SdkInnerError::JwtError;
+use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -21,16 +20,16 @@ pub struct AuthSdk {
 
 impl AuthSdk {
     fn client_id(&self) -> ClientId {
-        ClientId::new(self.sdk.client_id().clone())
+        ClientId::new(self.sdk.client_id.clone())
     }
     fn client_secret(&self) -> Option<ClientSecret> {
-        Some(ClientSecret::new(self.sdk.client_secret().clone()))
+        Some(ClientSecret::new(self.sdk.client_secret.clone()))
     }
     fn auth_url(&self, url_path: &str) -> Result<AuthUrl, oauth2::url::ParseError> {
-        AuthUrl::new(self.sdk.endpoint().clone() + url_path)
+        AuthUrl::new(self.sdk.endpoint.clone() + url_path)
     }
     fn token_url(&self, url_path: &str) -> Result<Option<TokenUrl>, oauth2::url::ParseError> {
-        Ok(Some(TokenUrl::new(self.sdk.endpoint().clone() + url_path)?))
+        Ok(Some(TokenUrl::new(self.sdk.endpoint.clone() + url_path)?))
     }
 
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
@@ -63,21 +62,24 @@ impl AuthSdk {
         let header = jsonwebtoken::decode_header(token)?;
 
         let mut validation = Validation::new(header.alg);
-        validation.set_audience(&[self.sdk.client_id()]);
+        validation.set_audience(&[&self.sdk.client_id]);
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
         match header.alg {
             Algorithm::HS256 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
+
                 Err(e)
             }
             Algorithm::HS384 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
+
                 Err(e)
             }
             Algorithm::HS512 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
+
                 Err(e)
             }
             Algorithm::ES256 => {
@@ -96,7 +98,7 @@ impl AuthSdk {
                 Ok(token_data.claims)
             }
             Algorithm::RS384 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
 
                 Err(e)
             }
@@ -106,21 +108,22 @@ impl AuthSdk {
                 Ok(token_data.claims)
             }
             Algorithm::PS256 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
+
                 Err(e)
             }
             Algorithm::PS384 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
 
                 Err(e)
             }
             Algorithm::PS512 => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
 
                 Err(e)
             }
             Algorithm::EdDSA => {
-                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
 
                 Err(e)
             }
@@ -129,11 +132,11 @@ impl AuthSdk {
 
     pub fn get_signing_url(&self, redirect_url: String) -> String {
         let scope = "read";
-        let state = self.sdk.app_name().clone().unwrap_or_default();
+        let state = self.sdk.app_name.clone().unwrap_or_default();
         format!(
             "{}/login/oauth/authorize?client_id={}&response_type=code&redirect_uri={}&scope={scope}&state={state}",
-            self.sdk.endpoint(),
-            self.sdk.client_id(),
+            self.sdk.endpoint,
+            self.sdk.client_id,
             urlencoding::encode(&redirect_url).into_owned(),
         )
     }
@@ -143,7 +146,7 @@ impl AuthSdk {
     }
 
     pub fn get_signup_url_enable_password(&self) -> String {
-        format!("{}/signup/{}", self.sdk.endpoint(), self.sdk.app_name().clone().unwrap_or_default())
+        format!("{}/signup/{}", self.sdk.endpoint, self.sdk.app_name.clone().unwrap_or_default())
     }
 
     pub fn get_user_profile_url(&self, uname: String, token: Option<String>) -> String {
@@ -151,7 +154,7 @@ impl AuthSdk {
             Some(token) if !token.is_empty() => format!("?access_token={}", token),
             _ => "".to_string(),
         };
-        format!("{}/users/{}/{uname}{param}", self.sdk.endpoint(), self.sdk.org_name())
+        format!("{}/users/{}/{uname}{param}", self.sdk.endpoint, self.sdk.org_name)
     }
 
     pub fn get_my_profile_url(&self, token: Option<String>) -> String {
@@ -159,11 +162,11 @@ impl AuthSdk {
             Some(token) if !token.is_empty() => format!("?access_token={}", token),
             _ => "".to_string(),
         };
-        format!("{}/account{}", self.sdk.endpoint(), param)
+        format!("{}/account{}", self.sdk.endpoint, param)
     }
 
     pub async fn get_sessions(&self, query_args: QueryArgs) -> SdkResult<QueryResult<Session>> {
-        self.sdk.get_models((), query_args).await
+        self.sdk.get_models(None, query_args).await
     }
 
     pub async fn get_session(&self, session_pk_id: &str) -> SdkResult<Session> {
@@ -216,11 +219,11 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es256.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000", 
-            "7883231e5f0792b5acdf",
-            "secret", 
+            "http://localhost:8000".to_string(), 
+            "7883231e5f0792b5acdf".to_string(),
+            "secret".to_string(), 
             cert,
-            "org_name", 
+            "org_name".to_string(), 
             Some("app_name".to_owned()),
         ).into_sdk();
 
@@ -235,11 +238,11 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es384.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000", 
-            "7883231e5f0792b5acdf",
-            "secret", 
+            "http://localhost:8000".to_string(), 
+            "7883231e5f0792b5acdf".to_string(),
+            "secret".to_string(), 
             cert,
-            "org_name", 
+            "org_name".to_string(), 
             Some("app_name".to_owned()),
         ).into_sdk();
 
@@ -254,11 +257,11 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs512.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs256.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000", 
-            "7883231e5f0792b5acdf",
-            "secret", 
+            "http://localhost:8000".to_string(), 
+            "7883231e5f0792b5acdf".to_string(),
+            "secret".to_string(), 
             cert,
-            "org_name",
+            "org_name".to_string(),
             Some("app_name".to_owned()),
         ).into_sdk();
 
@@ -274,11 +277,11 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs512.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000", 
-            "e953686f04e7055b698b", 
-            "secret", 
+            "http://localhost:8000".to_string(), 
+            "e953686f04e7055b698b".to_string(), 
+            "secret".to_string(), 
             cert, 
-            "org_name", 
+            "org_name".to_string(), 
             Some("app_name".to_owned()),
         ).into_sdk();
 
@@ -293,11 +296,11 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000", 
-            "e953686f04e7055b698b", 
-            "secret", 
+            "http://localhost:8000".to_string(), 
+            "e953686f04e7055b698b".to_string(), 
+            "secret".to_string(), 
             cert, 
-            "org_name", 
+            "org_name".to_string(), 
             Some("app_name".to_owned()),
         ).into_sdk();
 

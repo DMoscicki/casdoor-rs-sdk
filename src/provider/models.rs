@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::Model;
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Provider {

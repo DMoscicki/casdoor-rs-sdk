@@ -11,10 +11,11 @@ impl Sdk {
     }
 
     pub async fn get_applications(&self, query_args: ApplicationQueryArgs) -> SdkResult<QueryResult<Application>> {
-        self.get_models((), query_args).await
+        self.get_models(None, query_args).await
     }
 
     pub async fn get_organization_applications(&self, query_args: ApplicationQueryArgs) -> SdkResult<QueryResult<Application>> {
-        self.get_models("organization", query_args).await
+        let org = String::from("organization");
+        self.get_models(Some(org), query_args).await
     }
 }
