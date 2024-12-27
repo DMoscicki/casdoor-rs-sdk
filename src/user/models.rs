@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{utils::null_to_default, IsQueryArgs, Model, Permission, Role};
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Userinfo {
     sub: String,
@@ -33,7 +32,7 @@ pub struct Userinfo {
 }
 
 /// User info struct, defined in the SDK.
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct User {
@@ -201,7 +200,7 @@ pub struct User {
     pub ip_whitelist: String,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FaceId {
@@ -209,7 +208,7 @@ pub struct FaceId {
     pub face_id_data: Vec<f64>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MfaProps {
@@ -222,7 +221,7 @@ pub struct MfaProps {
     pub recovery_codes: Option<Vec<String>>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MfaAccount {
@@ -249,7 +248,7 @@ impl Model for User {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UserGroup {
@@ -291,7 +290,7 @@ impl Model for UserGroup {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ManagedAccount {
@@ -301,7 +300,7 @@ pub struct ManagedAccount {
     pub username: String,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MultiFactorAuth {
@@ -315,13 +314,13 @@ pub struct MultiFactorAuth {
     pub url: String,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WebauthnCredential {}
 
 /// The filter for query user.
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum QueryUserSet {
@@ -344,92 +343,80 @@ impl Display for QueryUserSet {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToParameters, salvo::prelude::ToSchema))]
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserQueryArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "groupName", skip_serializing_if = "Option::is_none")]
     pub group_name: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i32>,
     /// page
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "p", skip_serializing_if = "Option::is_none")]
     pub page: Option<i32>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "field", skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "value", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "sortField", skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "sortOrder", skip_serializing_if = "Option::is_none")]
     pub sort_order: Option<String>,
 }
 impl IsQueryArgs for UserQueryArgs {}
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToParameters, salvo::prelude::ToSchema))]
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GetUserArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phone: Option<String>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToParameters, salvo::prelude::ToSchema))]
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserGroupQueryArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "withTree", skip_serializing_if = "Option::is_none")]
     pub with_tree: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i32>,
     /// page
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "p", skip_serializing_if = "Option::is_none")]
     pub page: Option<i32>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "field", skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "value", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "sortField", skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(rename = "sortOrder", skip_serializing_if = "Option::is_none")]
     pub sort_order: Option<String>,
 }
 impl IsQueryArgs for UserGroupQueryArgs {}
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToParameters, salvo::prelude::ToSchema))]
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SetPasswordArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query)))]
     pub user_name: String,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query)))]
     pub new_password: String,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub old_password: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_owner: Option<String>,
 }

@@ -14,8 +14,6 @@ pub mod utils;
 pub use application::*;
 pub use authn::*;
 pub use authz::*;
-#[cfg(feature = "api")]
-pub use casdoor_api::{apis, models as api_models};
 pub use cert::*;
 pub use config::*;
 pub use organization::*;
@@ -68,7 +66,12 @@ nCCJHBcAyFnm1hdvdwEdH33jDBjNB6ciotJZrf/3VYaIWSalADosHAgMWfXuWP+h
         let org_name = "built-in";
         let app_name = "myapp";
 
-        let sdk = Config::new(endpoint, client_id, client_secret, certificate, org_name, Some(app_name.to_owned())).into_sdk();
+        let sdk = Config::new(endpoint.to_string(), 
+        client_id.to_string(), 
+        client_secret.to_string(), 
+        certificate.to_string(), 
+        org_name.to_string(), 
+        Some(app_name.to_owned())).into_sdk();
         println!("{:?}", sdk);
         println!("{:?}", sdk.authn());
     }

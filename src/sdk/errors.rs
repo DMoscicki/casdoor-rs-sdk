@@ -1,10 +1,4 @@
-use std::{fmt::Display, sync::Once};
-
-use cubix::api_response::error_code::CodeSegment::{S98, S99};
-pub use cubix::api_response::{
-    error_code::{CodeSegment, ErrorCode},
-    ApiError,
-};
+use std::fmt::Display;
 
 use crate::StatusCode;
 
@@ -105,39 +99,5 @@ where
             oauth2::RequestTokenError::Parse(_, _) => Self::new(StatusCode::INTERNAL_SERVER_ERROR, value.to_string()),
             oauth2::RequestTokenError::Other(_) => Self::new(StatusCode::INTERNAL_SERVER_ERROR, value.to_string()),
         }
-    }
-}
-
-#[cfg(feature = "salvo")]
-impl SdkError {
-    fn into_salvo(self) -> salvo::prelude::StatusError {
-        use salvo::prelude::StatusError;
-        StatusError::from_code(self.code)
-            .unwrap_or(StatusError::internal_server_error())
-            .brief(self.inner.to_string())
-    }
-}
-
-#[cfg(feature = "salvo")]
-impl From<SdkError> for salvo::prelude::StatusError {
-    fn from(value: SdkError) -> Self {
-        value.into_salvo()
-    }
-}
-
-static mut ERR_CODE_SUFFIX: (CodeSegment, CodeSegment, CodeSegment) = (S99, S99, S98);
-static INIT: Once = Once::new();
-
-/// Initialize the suffix of the error code.
-pub fn init_error_code_suffix(s1: CodeSegment, s2: CodeSegment, s3: CodeSegment) {
-    unsafe {
-        INIT.call_once(|| ERR_CODE_SUFFIX = (s1, s2, s3));
-    }
-}
-
-impl From<SdkError> for ApiError {
-    fn from(value: SdkError) -> Self {
-        let (s1, s2, s3) = unsafe { ERR_CODE_SUFFIX };
-        ErrorCode::from(value.code).api_error3(s1, s2, s3, value.to_string())
     }
 }

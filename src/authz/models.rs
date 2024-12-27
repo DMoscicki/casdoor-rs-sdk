@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{utils::null_to_default, Model};
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Enforcer {
@@ -37,7 +36,7 @@ impl Model for Enforcer {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Permission {
@@ -86,7 +85,7 @@ impl Model for Permission {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Role {
@@ -123,27 +122,26 @@ impl Model for Role {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema, salvo::prelude::ToParameters))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EnforceQueryArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permission_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enforcer_id: Option<String>,
 }
 
 pub type CasbinRequest = Vec<String>;
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EnforceArgs {
@@ -151,22 +149,22 @@ pub struct EnforceArgs {
     pub casbin_request: CasbinRequest,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema, salvo::prelude::ToParameters))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchEnforceQueryArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permission_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_id: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
+    
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enforcer_id: Option<String>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchEnforceArgs {
@@ -174,21 +172,21 @@ pub struct BatchEnforceArgs {
     pub casbin_requests: Vec<CasbinRequest>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EnforceResult {
     pub allow: bool,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchEnforceResult {
     pub allow_list: Vec<bool>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct CasbinRule {

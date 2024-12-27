@@ -6,7 +6,7 @@ use crate::{Body, Method, QueryArgs, QueryResult, Sdk, SdkResult, NO_BODY};
 
 impl Sdk {
     pub async fn get_enforcers(&self, query_args: QueryArgs) -> SdkResult<QueryResult<Enforcer>> {
-        self.get_models((), query_args).await
+        self.get_models(None, query_args).await
     }
     pub async fn enforce(&self, args: EnforceArgs) -> SdkResult<EnforceResult> {
         let allow_list = self
@@ -71,7 +71,7 @@ impl Sdk {
         .into_data_default()
     }
     pub async fn get_permissions(&self, query_args: QueryArgs) -> SdkResult<QueryResult<Permission>> {
-        self.get_models((), query_args).await
+        self.get_models(None, query_args).await
     }
     pub async fn get_permissions_by_submitter(&self) -> SdkResult<QueryResult<Permission>> {
         self.request(Method::GET, self.get_url_path("get-permissions-by-submitter", false, ())?, NO_BODY)
@@ -90,7 +90,7 @@ impl Sdk {
         .map(Into::into)
     }
     pub async fn get_roles(&self, query_args: QueryArgs) -> SdkResult<QueryResult<Role>> {
-        self.get_models((), query_args).await
+        self.get_models(None, query_args).await
     }
     pub async fn get_roles_by_user(&self, user_id: &str) -> SdkResult<Vec<String>> {
         self.request_data(Method::GET, self.get_url_path("get-all-roles", false, [("userId", user_id)])?, NO_BODY)

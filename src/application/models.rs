@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Cert, IsQueryArgs, Model, Organization, Provider, ThemeData};
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Application {
@@ -70,7 +69,7 @@ pub struct Application {
     cert_obj: Option<Cert>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProviderItem {
@@ -86,7 +85,7 @@ pub struct ProviderItem {
     provider: Option<Provider>,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SignupItem {
@@ -101,7 +100,7 @@ pub struct SignupItem {
     rule: String,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SigninMethod {
@@ -110,7 +109,7 @@ pub struct SigninMethod {
     rule: String,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SigninItem {
@@ -123,7 +122,7 @@ pub struct SigninItem {
     is_custom: bool,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SamlItem {
@@ -150,25 +149,18 @@ impl Model for Application {
     }
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToParameters, salvo::prelude::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct ApplicationQueryArgs {
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i32>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "p", skip_serializing_if = "Option::is_none")]
     pub page: Option<i32>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "field", skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "value", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "sortField", skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<String>,
-    #[cfg_attr(feature = "salvo", salvo(parameter(parameter_in=Query,required=false)))]
     #[serde(rename = "sortOrder", skip_serializing_if = "Option::is_none")]
     pub sort_order: Option<String>,
     pub organization_name: Option<String>,

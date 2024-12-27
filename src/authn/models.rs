@@ -1,10 +1,8 @@
-use cubix::jwt_claims::RegisteredClaims;
 pub use oauth2::TokenResponse;
 use serde::{Deserialize, Serialize};
 
 use crate::{Model, User};
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Claims {
@@ -15,11 +13,10 @@ pub struct Claims {
     pub token_type: Option<String>,
     pub nonce: Option<String>,
     pub scope: Option<String>,
-    #[serde(flatten)]
-    pub reg_claims: RegisteredClaims,
+    // #[serde(flatten)]
+    // pub reg_claims: RegisteredClaims,
 }
 
-#[cfg_attr(feature = "salvo", derive(salvo::prelude::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Session {
