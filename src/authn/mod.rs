@@ -1,10 +1,13 @@
 mod models;
 use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
+use jsonwebtoken::errors::{Error, ErrorKind};
 pub use models::*;
 use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
 pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
 use openssl::pkey::{PKey, Public};
-use crate::{Method, QueryArgs, QueryResult, Sdk, SdkResult, NO_BODY};
+use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, StatusCode, NO_BODY};
+use crate::SdkInnerError::JwtError;
+
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
         AuthSdk { sdk: self.clone() }
@@ -56,51 +59,75 @@ impl AuthSdk {
         .await?)
     }
 
-    pub fn parse_jwt_token_rs256(&self, token: &str) -> SdkResult<Claims> {
-        let mut validation = Validation::new(Algorithm::RS256);
+    pub fn parse_jwt_token(&self, token: &str) -> SdkResult<Claims> {
+        let header = jsonwebtoken::decode_header(token)?;
+
+        let mut validation = Validation::new(header.alg);
         validation.set_audience(&[self.sdk.client_id()]);
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
+        match header.alg {
+            Algorithm::HS256 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                Err(e)
+            }
+            Algorithm::HS384 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                Err(e)
+            }
+            Algorithm::HS512 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                Err(e)
+            }
+            Algorithm::ES256 => {
+                let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
 
-        Ok(token_data.claims)
+                Ok(token_data.claims)
+            }
+            Algorithm::ES384 => {
+                let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
+
+                Ok(token_data.claims)
+            }
+            Algorithm::RS256 => {
+                let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
+
+                Ok(token_data.claims)
+            }
+            Algorithm::RS384 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+
+                Err(e)
+            }
+            Algorithm::RS512 => {
+                let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
+
+                Ok(token_data.claims)
+            }
+            Algorithm::PS256 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+                Err(e)
+            }
+            Algorithm::PS384 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+
+                Err(e)
+            }
+            Algorithm::PS512 => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+
+                Err(e)
+            }
+            Algorithm::EdDSA => {
+                let e = SdkError::new(StatusCode::BAD_REQUEST, JwtError(Error::from(ErrorKind::InvalidAlgorithm)));
+
+                Err(e)
+            }
+        }
     }
 
-    pub fn parse_jwt_token_rs512(&self, token: &str) -> SdkResult<Claims> {
-        let mut validation: Validation = Validation::new(Algorithm::RS512);
-        validation.set_audience(&[self.sdk.client_id()]);
-
-        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
-
-        let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
-
-        Ok(token_data.claims)
-    }
-
-    pub fn parse_jwt_token_es256(&self, token: &str) -> SdkResult<Claims> {
-        let mut validation: Validation = Validation::new(Algorithm::ES256);
-        validation.set_audience(&[self.sdk.client_id()]);
-
-        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
-
-        let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
-
-        Ok(token_data.claims)
-    }
-
-    pub fn parse_jwt_token_es384(&self, token: &str) -> SdkResult<Claims> {
-        let mut validation: Validation = Validation::new(Algorithm::ES384);
-        validation.set_audience(&[self.sdk.client_id()]);
-
-        let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
-
-        let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
-
-        Ok(token_data.claims)
-    }
-
-    pub fn get_signin_url(&self, redirect_url: String) -> String {
+    pub fn get_signing_url(&self, redirect_url: String) -> String {
         let scope = "read";
         let state = self.sdk.app_name().clone().unwrap_or_default();
         format!(
@@ -185,7 +212,7 @@ mod tests {
     use crate::Config;
 
     #[test]
-    fn succesfully_es256() {
+    fn successfully_es256() {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es256.txt").unwrap();
         let cfg = Config::new(
@@ -199,12 +226,12 @@ mod tests {
 
         let authnx = cfg.authn();
 
-        let tk = authnx.parse_jwt_token_es256(&token).unwrap();
+        let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
     }
 
     #[test]
-    fn succesfully_es384() {
+    fn successfully_es384() {
         let token = fs::read_to_string("./src/authn/testdata/tok_es384.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
@@ -218,12 +245,12 @@ mod tests {
 
         let authnx = cfg.authn();
 
-        let tk = authnx.parse_jwt_token_es384(&token).unwrap();
+        let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
     }
 
     #[test]
-    fn succesfully_rs512() {
+    fn successfully_rs512() {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs512.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs256.txt").unwrap();
         let cfg = Config::new(
@@ -237,7 +264,7 @@ mod tests {
 
         let authnx = cfg.authn();
 
-        let tk = authnx.parse_jwt_token_rs512(&token).unwrap();
+        let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
     }
 
@@ -257,7 +284,7 @@ mod tests {
 
         let authnx = cfg.authn();
 
-        let _tk = authnx.parse_jwt_token_rs512(&token).unwrap();
+        let _tk = authnx.parse_jwt_token(&token).unwrap();
     }
 
     #[test]
@@ -276,6 +303,6 @@ mod tests {
 
         let authnx = cfg.authn();
 
-        let _tk = authnx.parse_jwt_token_es384(&token).unwrap();
+        let _tk = authnx.parse_jwt_token(&token).unwrap();
     }
 }
