@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn test_res_json() {
         let json_data = r#"{"data":{"accessKey":"test"},"data2":null,"name":"","status":"ok","msg":"test","sub":""}"#;
-        let obj: ApiResponse<HashMap<String, String>, ()> = serde_json::from_str(&json_data).unwrap();
+        let obj: ApiResponse<HashMap<String, String>, ()> = serde_json::from_str(json_data).unwrap();
         println!("{obj:?}");
         let json_data2 = serde_json::to_string(&obj).unwrap();
         assert_eq!(json_data, json_data2);
