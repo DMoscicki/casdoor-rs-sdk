@@ -1,11 +1,12 @@
 mod models;
-use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
+use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
 use jsonwebtoken::errors::{Error, ErrorKind};
+use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
-use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
+use oauth2::{basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
 pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
 use openssl::pkey::{PKey, Public};
-use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
+use reqwest::{redirect, ClientBuilder};
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -33,29 +34,35 @@ impl AuthSdk {
     }
 
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
-    pub async fn get_oauth_token(&self, code: String) -> SdkResult<impl TokenResponse<BasicTokenType>> {
-        Ok(BasicClient::new(
-            self.client_id(),
-            self.client_secret(),
-            self.auth_url("/api/login/oauth/authorize")?,
-            self.token_url("/api/login/oauth/access_token")?,
+    pub async fn get_oauth_token(&self, code: String) -> SdkResult<impl TokenResponse> {
+        let http_client = ClientBuilder::new()
+            .redirect(redirect::Policy::default())
+            .build()
+            .expect("Client must build");
+
+        Ok(BasicClient::new(self.client_id())
+            .set_client_secret(self.client_secret().unwrap())
+            .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
+            .set_token_uri(self.token_url("/api/login/oauth/access_token").unwrap().unwrap())
+            .exchange_code(AuthorizationCode::new(code))
+            .request_async(&http_client).await?
         )
-        .exchange_code(AuthorizationCode::new(code))
-        .request_async(async_http_client)
-        .await?)
     }
 
     /// Refreshes the OAuth token
-    pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<impl TokenResponse<BasicTokenType>> {
-        Ok(BasicClient::new(
-            self.client_id(),
-            self.client_secret(),
-            self.auth_url("/api/login/oauth/authorize")?,
-            self.token_url("/api/login/oauth/refresh_token")?,
+    pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<impl TokenResponse> {
+        let http_client = ClientBuilder::new()
+            .redirect(redirect::Policy::default())
+            .build()
+            .expect("Client must build");
+
+        Ok(BasicClient::new(self.client_id())
+            .set_client_secret(self.client_secret().unwrap())
+            .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
+            .set_token_uri(self.token_url("/api/login/oauth/refresh_token").unwrap().unwrap())
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(&http_client).await?
         )
-        .exchange_refresh_token(&RefreshToken::new(refresh_token))
-        .request_async(async_http_client)
-        .await?)
     }
 
     pub fn parse_jwt_token(&self, token: &str) -> SdkResult<Claims> {
