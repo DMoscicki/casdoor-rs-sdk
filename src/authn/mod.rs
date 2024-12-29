@@ -1,9 +1,11 @@
 mod models;
+
+use std::fmt::Write;
 use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
 use jsonwebtoken::errors::{Error, ErrorKind};
 use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
-use oauth2::{basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
+use oauth2::{basic::BasicClient, AuthType, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
 pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
 use openssl::pkey::{PKey, Public};
 use reqwest::{redirect, ClientBuilder};
@@ -21,16 +23,26 @@ pub struct AuthSdk {
 
 impl AuthSdk {
     fn client_id(&self) -> ClientId {
-        ClientId::new(self.sdk.client_id.clone())
+        ClientId::new(self.sdk.client_id.to_string())
     }
-    fn client_secret(&self) -> Option<ClientSecret> {
-        Some(ClientSecret::new(self.sdk.client_secret.clone()))
+    fn client_secret(&self) -> ClientSecret {
+        ClientSecret::new(self.sdk.client_secret.to_string())
     }
     fn auth_url(&self, url_path: &str) -> Result<AuthUrl, oauth2::url::ParseError> {
-        AuthUrl::new(self.sdk.endpoint.clone() + url_path)
+        let mut url = String::new();
+
+        url.write_str(&self.sdk.endpoint).unwrap();
+        url.write_str(url_path).unwrap();
+
+        AuthUrl::new(url)
     }
     fn token_url(&self, url_path: &str) -> Result<Option<TokenUrl>, oauth2::url::ParseError> {
-        Ok(Some(TokenUrl::new(self.sdk.endpoint.clone() + url_path)?))
+        let mut url = String::new();
+
+        url.write_str(&self.sdk.endpoint).unwrap();
+        url.write_str(url_path).unwrap();
+
+        Ok(Some(TokenUrl::new(url)?))
     }
 
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
@@ -40,10 +52,11 @@ impl AuthSdk {
             .build()
             .expect("Client must build");
 
-        Ok(BasicClient::new(self.client_id())
-            .set_client_secret(self.client_secret().unwrap())
+        Ok(BasicClient::new(ClientId::new(self.sdk.client_id.to_string()))
+            .set_client_secret(self.client_secret())
             .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
             .set_token_uri(self.token_url("/api/login/oauth/access_token").unwrap().unwrap())
+            .set_auth_type(AuthType::RequestBody)
             .exchange_code(AuthorizationCode::new(code))
             .request_async(&http_client).await?
         )
@@ -52,14 +65,15 @@ impl AuthSdk {
     /// Refreshes the OAuth token
     pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<impl TokenResponse> {
         let http_client = ClientBuilder::new()
-            .redirect(redirect::Policy::default())
+            .redirect(redirect::Policy::none())
             .build()
             .expect("Client must build");
 
-        Ok(BasicClient::new(self.client_id())
-            .set_client_secret(self.client_secret().unwrap())
+        Ok(BasicClient::new(ClientId::new(self.sdk.client_id.to_string()))
+            .set_client_secret(self.client_secret())
             .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
             .set_token_uri(self.token_url("/api/login/oauth/refresh_token").unwrap().unwrap())
+            .set_auth_type(AuthType::RequestBody)
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
             .request_async(&http_client).await?
         )
@@ -74,21 +88,6 @@ impl AuthSdk {
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
         match header.alg {
-            Algorithm::HS256 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
-            Algorithm::HS384 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
-            Algorithm::HS512 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
             Algorithm::ES256 => {
                 let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
 
@@ -104,32 +103,12 @@ impl AuthSdk {
 
                 Ok(token_data.claims)
             }
-            Algorithm::RS384 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
             Algorithm::RS512 => {
                 let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
 
                 Ok(token_data.claims)
             }
-            Algorithm::PS256 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
-            Algorithm::PS384 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
-            Algorithm::PS512 => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
-            }
-            Algorithm::EdDSA => {
+            _ => {
                 let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
 
                 Err(e)
