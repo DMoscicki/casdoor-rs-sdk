@@ -65,13 +65,14 @@ nCCJHBcAyFnm1hdvdwEdH33jDBjNB6ciotJZrf/3VYaIWSalADosHAgMWfXuWP+h
 "###;
         let org_name = "built-in";
         let app_name = "myapp";
+        let domain = "http://localhost:9000";
 
         let sdk = Config::new(endpoint.to_string(), 
         client_id.to_string(), 
         client_secret.to_string(), 
         certificate.to_string(), 
         org_name.to_string(), 
-        Some(app_name.to_owned())).into_sdk();
+        Some(app_name.to_owned()), Some(domain.to_owned())).into_sdk();
         println!("{:?}", sdk);
         println!("{:?}", sdk.authn());
     }
