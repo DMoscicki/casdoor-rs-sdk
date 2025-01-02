@@ -1,14 +1,12 @@
 mod models;
 
-use std::fmt::Write;
 use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
 use jsonwebtoken::errors::{Error, ErrorKind};
 use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
-use oauth2::{basic::BasicClient, AuthType, AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl};
-pub use oauth2::{basic::BasicTokenType, AccessToken, RefreshToken, Scope, TokenResponse, TokenType};
+use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl, RedirectUrl, RefreshToken};
 use openssl::pkey::{PKey, Public};
-use reqwest::{redirect, ClientBuilder};
+use std::fmt::Write;
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -25,9 +23,11 @@ impl AuthSdk {
     fn client_id(&self) -> ClientId {
         ClientId::new(self.sdk.client_id.to_string())
     }
+    
     fn client_secret(&self) -> ClientSecret {
         ClientSecret::new(self.sdk.client_secret.to_string())
     }
+    
     fn auth_url(&self, url_path: &str) -> Result<AuthUrl, oauth2::url::ParseError> {
         let mut url = String::new();
 
@@ -36,47 +36,46 @@ impl AuthSdk {
 
         AuthUrl::new(url)
     }
-    fn token_url(&self, url_path: &str) -> Result<Option<TokenUrl>, oauth2::url::ParseError> {
+    
+    fn token_url(&self, url_path: &str) -> Result<TokenUrl, oauth2::url::ParseError> {
         let mut url = String::new();
 
         url.write_str(&self.sdk.endpoint).unwrap();
         url.write_str(url_path).unwrap();
 
-        Ok(Some(TokenUrl::new(url)?))
+        Ok(TokenUrl::new(url)?)
     }
 
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
-    pub async fn get_oauth_token(&self, code: String) -> SdkResult<impl TokenResponse> {
-        let http_client = ClientBuilder::new()
-            .redirect(redirect::Policy::default())
-            .build()
-            .expect("Client must build");
-
-        Ok(BasicClient::new(ClientId::new(self.sdk.client_id.to_string()))
-            .set_client_secret(self.client_secret())
-            .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
-            .set_token_uri(self.token_url("/api/login/oauth/access_token").unwrap().unwrap())
-            .set_auth_type(AuthType::RequestBody)
-            .exchange_code(AuthorizationCode::new(code))
-            .request_async(&http_client).await?
+    pub async fn get_oauth_token(&self, code: String) -> SdkResult<CasdoorTokenResponse> {
+        let casdoor_client = OAuth2Client::new(
+            self.client_id(),
+            self.client_secret(),
+            self.auth_url("/api/login/oauth/authorize")?,
+            self.token_url("/api/login/oauth/access_token")?,
         )
+        .await
+        .unwrap();
+
+        let token_res: CasdoorTokenResponse = casdoor_client.get_oauth_token(AuthorizationCode::new(code), RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap()).await.unwrap();
+
+        Ok(token_res)
     }
 
     /// Refreshes the OAuth token
-    pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<impl TokenResponse> {
-        let http_client = ClientBuilder::new()
-            .redirect(redirect::Policy::none())
-            .build()
-            .expect("Client must build");
-
-        Ok(BasicClient::new(ClientId::new(self.sdk.client_id.to_string()))
-            .set_client_secret(self.client_secret())
-            .set_auth_uri(self.auth_url("/api/login/oauth/authorize").unwrap())
-            .set_token_uri(self.token_url("/api/login/oauth/refresh_token").unwrap().unwrap())
-            .set_auth_type(AuthType::RequestBody)
-            .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(&http_client).await?
+    pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<CasdoorTokenResponse> {
+        let casdoor_client = OAuth2Client::new(
+            self.client_id(),
+            self.client_secret(),
+            self.auth_url("/api/login/oauth/authorize")?,
+            self.token_url("/api/login/oauth/refresh_token")?,
         )
+        .await
+        .unwrap();
+
+        let token_res = casdoor_client.refresh_token(RefreshToken::new(refresh_token)).await.unwrap();
+
+        Ok(token_res)
     }
 
     pub fn parse_jwt_token(&self, token: &str) -> SdkResult<Claims> {
@@ -205,13 +204,15 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es256.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000".to_string(), 
+            "http://localhost:8000".to_string(),
             "7883231e5f0792b5acdf".to_string(),
-            "secret".to_string(), 
+            "secret".to_string(),
             cert,
-            "org_name".to_string(), 
+            "org_name".to_string(),
             Some("app_name".to_owned()),
-        ).into_sdk();
+            Some("domain".to_owned())
+        )
+        .into_sdk();
 
         let authnx = cfg.authn();
 
@@ -224,13 +225,15 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es384.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000".to_string(), 
+            "http://localhost:8000".to_string(),
             "7883231e5f0792b5acdf".to_string(),
-            "secret".to_string(), 
+            "secret".to_string(),
             cert,
-            "org_name".to_string(), 
+            "org_name".to_string(),
             Some("app_name".to_owned()),
-        ).into_sdk();
+            Some("domain".to_owned())
+        )
+        .into_sdk();
 
         let authnx = cfg.authn();
 
@@ -243,13 +246,15 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs512.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs256.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000".to_string(), 
+            "http://localhost:8000".to_string(),
             "7883231e5f0792b5acdf".to_string(),
-            "secret".to_string(), 
+            "secret".to_string(),
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-        ).into_sdk();
+            Some("domain".to_owned())
+        )
+        .into_sdk();
 
         let authnx = cfg.authn();
 
@@ -263,13 +268,15 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs512.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000".to_string(), 
-            "e953686f04e7055b698b".to_string(), 
-            "secret".to_string(), 
-            cert, 
-            "org_name".to_string(), 
+            "http://localhost:8000".to_string(),
+            "e953686f04e7055b698b".to_string(),
+            "secret".to_string(),
+            cert,
+            "org_name".to_string(),
             Some("app_name".to_owned()),
-        ).into_sdk();
+            Some("domain".to_owned())
+        )
+        .into_sdk();
 
         let authnx = cfg.authn();
 
@@ -282,13 +289,15 @@ mod tests {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
-            "http://localhost:8000".to_string(), 
-            "e953686f04e7055b698b".to_string(), 
-            "secret".to_string(), 
-            cert, 
-            "org_name".to_string(), 
+            "http://localhost:8000".to_string(),
+            "e953686f04e7055b698b".to_string(),
+            "secret".to_string(),
+            cert,
+            "org_name".to_string(),
             Some("app_name".to_owned()),
-        ).into_sdk();
+            Some("domain".to_owned())
+        )
+        .into_sdk();
 
         let authnx = cfg.authn();
 
