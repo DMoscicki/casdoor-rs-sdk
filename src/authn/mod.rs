@@ -4,9 +4,15 @@ use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
 use jsonwebtoken::errors::{Error, ErrorKind};
 use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
-use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, TokenUrl, RedirectUrl, RefreshToken};
+use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, RedirectUrl, RefreshToken, TokenUrl};
+use openssl::base64;
 use openssl::pkey::{PKey, Public};
+use openssl::sha::sha256;
+use rand::Rng;
 use std::fmt::Write;
+use std::iter;
+use url::Url;
+use uuid::Uuid;
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -23,11 +29,11 @@ impl AuthSdk {
     fn client_id(&self) -> ClientId {
         ClientId::new(self.sdk.client_id.to_string())
     }
-    
+
     fn client_secret(&self) -> ClientSecret {
         ClientSecret::new(self.sdk.client_secret.to_string())
     }
-    
+
     fn auth_url(&self, url_path: &str) -> Result<AuthUrl, oauth2::url::ParseError> {
         let mut url = String::new();
 
@@ -36,7 +42,7 @@ impl AuthSdk {
 
         AuthUrl::new(url)
     }
-    
+
     fn token_url(&self, url_path: &str) -> Result<TokenUrl, oauth2::url::ParseError> {
         let mut url = String::new();
 
@@ -57,7 +63,10 @@ impl AuthSdk {
         .await
         .unwrap();
 
-        let token_res: CasdoorTokenResponse = casdoor_client.get_oauth_token(AuthorizationCode::new(code), RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap()).await.unwrap();
+        let token_res: CasdoorTokenResponse = casdoor_client
+            .get_oauth_token(AuthorizationCode::new(code), RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap())
+            .await
+            .unwrap();
 
         Ok(token_res)
     }
@@ -118,12 +127,25 @@ impl AuthSdk {
     pub fn get_signing_url(&self, redirect_url: String) -> String {
         let scope = "read";
         let state = self.sdk.app_name.clone().unwrap_or_default();
-        format!(
-            "{}/login/oauth/authorize?client_id={}&response_type=code&redirect_uri={}&scope={scope}&state={state}",
-            self.sdk.endpoint,
-            self.sdk.client_id,
-            urlencoding::encode(&redirect_url).into_owned(),
-        )
+        let base = format!("{}/login/oauth/authorize", self.sdk.endpoint);
+        let domain = self.sdk.domain.clone();
+        let nonce = Uuid::new_v4();
+
+        let siginig_url = Url::parse_with_params(
+            base.as_str(),
+            &[
+                ("client_id", self.client_id().as_str()),
+                ("redirect_uri", redirect_url.as_str()),
+                ("scope", scope),
+                ("response_type", "code"),
+                ("state", state.as_str()),
+                ("code_challenge_method", "S256"),
+                ("nonce", nonce.to_string().as_str()),
+                ("code_challenge", generate_code_challange(generate_random_string(43)).as_str())
+            ],
+        ).unwrap();
+        
+        siginig_url.to_string()
     }
 
     pub fn get_signup_url(&self, redirect_url: String) -> String {
@@ -178,6 +200,19 @@ impl AuthSdk {
     }
 }
 
+fn generate_random_string(length: usize) -> String {
+    const CHARSET: &[u8] = b"AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890";
+    let mut rng = rand::thread_rng();
+    let one_char = || CHARSET[rng.gen_range(0..CHARSET.len())] as char;
+    iter::repeat_with(one_char).take(length).collect()
+}
+
+fn generate_code_challange(verifier: String) -> String {
+    let bb= verifier.as_bytes();
+    let digest = sha256(bb);
+    base64::encode_block(&digest).replace("=", "-")
+}
+
 fn get_tk_es(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<Claims> {
     let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
     let decode_key = &DecodingKey::from_ec_pem(&public_key).unwrap();
@@ -210,7 +245,7 @@ mod tests {
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-            Some("domain".to_owned())
+            Some("domain".to_owned()),
         )
         .into_sdk();
 
@@ -231,7 +266,7 @@ mod tests {
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-            Some("domain".to_owned())
+            Some("domain".to_owned()),
         )
         .into_sdk();
 
@@ -252,7 +287,7 @@ mod tests {
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-            Some("domain".to_owned())
+            Some("domain".to_owned()),
         )
         .into_sdk();
 
@@ -274,7 +309,7 @@ mod tests {
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-            Some("domain".to_owned())
+            Some("domain".to_owned()),
         )
         .into_sdk();
 
@@ -295,7 +330,7 @@ mod tests {
             cert,
             "org_name".to_string(),
             Some("app_name".to_owned()),
-            Some("domain".to_owned())
+            Some("domain".to_owned()),
         )
         .into_sdk();
 

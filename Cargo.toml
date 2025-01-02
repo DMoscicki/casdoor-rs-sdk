@@ -24,3 +24,13 @@ oauth2 = "5.0.0-rc.1"
 toml = "0.8"
 openssl = "0.10.68"
 anyhow = "1.0.95"
+rand = "0.8"
+url = "2.5.4"
+
+[dependencies.uuid]
+version = "1.11.0"
+features = [
+    "v4",
+    "fast-rng",
+    "macro-diagnostics",
+]
