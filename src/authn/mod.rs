@@ -54,17 +54,16 @@ impl AuthSdk {
 
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
     pub async fn get_oauth_token(&self, code: String) -> SdkResult<CasdoorTokenResponse> {
-        let casdoor_client = OAuth2Client::new(
-            self.client_id(),
-            self.client_secret(),
-            self.auth_url("/api/login/oauth/authorize")?,
-            self.token_url("/api/login/oauth/access_token")?,
-        )
-        .await
-        .unwrap();
+        let casdoor_client = OAuth2Client::new(self.client_id(), self.client_secret(), self.auth_url("/api/login/oauth/authorize")?)
+            .await
+            .unwrap();
 
         let token_res: CasdoorTokenResponse = casdoor_client
-            .get_oauth_token(AuthorizationCode::new(code), RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap())
+            .get_oauth_token(
+                AuthorizationCode::new(code),
+                RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap(),
+                self.token_url("/api/login/oauth/access_token")?,
+            )
             .await
             .unwrap();
 
@@ -73,16 +72,14 @@ impl AuthSdk {
 
     /// Refreshes the OAuth token
     pub async fn refresh_oauth_token(&self, refresh_token: String) -> SdkResult<CasdoorTokenResponse> {
-        let casdoor_client = OAuth2Client::new(
-            self.client_id(),
-            self.client_secret(),
-            self.auth_url("/api/login/oauth/authorize")?,
-            self.token_url("/api/login/oauth/refresh_token")?,
-        )
-        .await
-        .unwrap();
+        let casdoor_client = OAuth2Client::new(self.client_id(), self.client_secret(), self.auth_url("/api/login/oauth/authorize")?)
+            .await
+            .unwrap();
 
-        let token_res = casdoor_client.refresh_token(RefreshToken::new(refresh_token)).await.unwrap();
+        let token_res = casdoor_client
+            .refresh_token(RefreshToken::new(refresh_token), self.token_url("/api/login/oauth/refresh_token")?)
+            .await
+            .unwrap();
 
         Ok(token_res)
     }
@@ -128,7 +125,6 @@ impl AuthSdk {
         let scope = "read";
         let state = self.sdk.app_name.clone().unwrap_or_default();
         let base = format!("{}/login/oauth/authorize", self.sdk.endpoint);
-        let domain = self.sdk.domain.clone();
         let nonce = Uuid::new_v4();
 
         let siginig_url = Url::parse_with_params(
@@ -141,10 +137,11 @@ impl AuthSdk {
                 ("state", state.as_str()),
                 ("code_challenge_method", "S256"),
                 ("nonce", nonce.to_string().as_str()),
-                ("code_challenge", generate_code_challange(generate_random_string(43)).as_str())
+                ("code_challenge", generate_code_challange(generate_random_string(43)).as_str()),
             ],
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         siginig_url.to_string()
     }
 
@@ -208,7 +205,7 @@ fn generate_random_string(length: usize) -> String {
 }
 
 fn generate_code_challange(verifier: String) -> String {
-    let bb= verifier.as_bytes();
+    let bb = verifier.as_bytes();
     let digest = sha256(bb);
     base64::encode_block(&digest).replace("=", "-")
 }

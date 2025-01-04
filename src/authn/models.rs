@@ -2,7 +2,11 @@ use std::time::Duration;
 
 use anyhow::{Ok, Result};
 pub use oauth2::TokenResponse;
-use oauth2::{basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType}, AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields, IntrospectionUrl, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl};
+use oauth2::{
+    basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType},
+    AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields,
+    IntrospectionUrl, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl,
+};
 use reqwest::{redirect, ClientBuilder};
 use serde::{Deserialize, Serialize};
 
@@ -177,15 +181,24 @@ impl OAuth2Client {
     }
 
     pub async fn get_oauth_token(self, code: AuthorizationCode, redirect_url: RedirectUrl, token_url: TokenUrl) -> Result<CasdoorTokenResponse> {
-        let token_res = self.client.set_redirect_uri(redirect_url)
-            .set_token_uri(token_url).exchange_code(code).request_async(&self.http_client).await?;
+        let token_res = self
+            .client
+            .set_redirect_uri(redirect_url)
+            .set_token_uri(token_url)
+            .exchange_code(code)
+            .request_async(&self.http_client)
+            .await?;
 
         Ok(token_res)
     }
 
     pub async fn get_introspect(self, intro_url: IntrospectionUrl, token: &AccessToken) -> Result<BasicTokenIntrospectionResponse> {
-        let res = self.client.set_introspection_url(intro_url)
-            .introspect(token).request_async(&self.http_client).await?;
+        let res = self
+            .client
+            .set_introspection_url(intro_url)
+            .introspect(token)
+            .request_async(&self.http_client)
+            .await?;
 
         Ok(res)
     }
