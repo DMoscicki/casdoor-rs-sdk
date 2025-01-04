@@ -28,7 +28,7 @@ pub enum SdkInnerError {
     StringError(String),
     ReqwestError(reqwest::Error),
     SerdeUrlencodedSerError(serde_urlencoded::ser::Error),
-    Oauth2UrlParseError(oauth2::url::ParseError),
+    Oauth2UrlParseError(url::ParseError),
     Oauth2RequestTokenError(String),
     JwtError(jsonwebtoken::errors::Error),
 }
@@ -75,8 +75,8 @@ impl From<serde_urlencoded::ser::Error> for SdkError {
     }
 }
 
-impl From<oauth2::url::ParseError> for SdkError {
-    fn from(value: oauth2::url::ParseError) -> Self {
+impl From<url::ParseError> for SdkError {
+    fn from(value: url::ParseError) -> Self {
         Self::new(StatusCode::BAD_REQUEST, SdkInnerError::Oauth2UrlParseError(value))
     }
 }
