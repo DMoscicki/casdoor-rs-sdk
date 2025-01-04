@@ -1,18 +1,17 @@
 mod models;
 
-use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
-use jsonwebtoken::errors::{Error, ErrorKind};
-use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
+use crate::{ApiResponse, Method, Model, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, Status, StatusCode, NO_BODY};
+use jsonwebtoken::{errors::{Error, ErrorKind}, Algorithm, DecodingKey, TokenData, Validation};
 pub use models::*;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, RedirectUrl, RefreshToken, TokenUrl};
-use openssl::base64;
-use openssl::pkey::{PKey, Public};
-use openssl::sha::sha256;
+use openssl::{base64, pkey::{PKey, Public}, sha::sha256};
 use rand::Rng;
-use std::fmt::Write;
-use std::iter;
+use std::{fmt::Write, iter};
+use std::collections::HashMap;
 use url::Url;
 use uuid::Uuid;
+use anyhow::Result;
+use crate::SdkInnerError::JwtError;
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -34,7 +33,7 @@ impl AuthSdk {
         ClientSecret::new(self.sdk.client_secret.to_string())
     }
 
-    fn auth_url(&self, url_path: &str) -> Result<AuthUrl, oauth2::url::ParseError> {
+    fn auth_url(&self, url_path: &str) -> Result<AuthUrl, url::ParseError> {
         let mut url = String::new();
 
         url.write_str(&self.sdk.endpoint).unwrap();
@@ -43,7 +42,7 @@ impl AuthSdk {
         AuthUrl::new(url)
     }
 
-    fn token_url(&self, url_path: &str) -> Result<TokenUrl, oauth2::url::ParseError> {
+    fn token_url(&self, url_path: &str) -> Result<TokenUrl, url::ParseError> {
         let mut url = String::new();
 
         url.write_str(&self.sdk.endpoint).unwrap();
@@ -92,6 +91,7 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
+        /// TODO: Add ES512 support after https://github.com/Keats/jsonwebtoken/issues/250#issuecomment-2488307814
         match header.alg {
             Algorithm::ES256 => {
                 let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
@@ -114,9 +114,7 @@ impl AuthSdk {
                 Ok(token_data.claims)
             }
             _ => {
-                let e = SdkError::from(Error::from(ErrorKind::InvalidAlgorithm));
-
-                Err(e)
+                Err(SdkError::from(Error::from(ErrorKind::InvalidAlgorithm)))
             }
         }
     }
@@ -127,7 +125,7 @@ impl AuthSdk {
         let base = format!("{}/login/oauth/authorize", self.sdk.endpoint);
         let nonce = Uuid::new_v4();
 
-        let siginig_url = Url::parse_with_params(
+        let signing_url = Url::parse_with_params(
             base.as_str(),
             &[
                 ("client_id", self.client_id().as_str()),
@@ -142,7 +140,24 @@ impl AuthSdk {
         )
         .unwrap();
 
-        siginig_url.to_string()
+        signing_url.to_string()
+    }
+
+    pub async fn logout(self,
+        endpoint: &str,
+        id_token: &str,
+        post_logout_redirect_uri: &str,
+        state: &str) -> SdkResult<ApiResponse<HashMap<String, String>, HashMap<String,String>>> {
+        let logout_url = Url::parse_with_params(endpoint, &[
+            ("id_token_hint", id_token),
+            ("post_logout_redirect_uri", post_logout_redirect_uri),
+            ("state", state)
+        ])?;
+
+        let response: ApiResponse<HashMap<String, String>, HashMap<String, String>> = self.sdk.
+            request(Method::POST, logout_url, NO_BODY).await?;
+
+        Ok(response)
     }
 
     pub fn get_signup_url(&self, redirect_url: String) -> String {

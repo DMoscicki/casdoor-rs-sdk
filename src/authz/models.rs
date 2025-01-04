@@ -25,14 +25,14 @@ impl Model for Enforcer {
     fn plural_ident() -> &'static str {
         "enforcers"
     }
+    fn support_update_columns() -> bool {
+        false
+    }
     fn owner(&self) -> &str {
         &self.owner
     }
     fn name(&self) -> &str {
         &self.name
-    }
-    fn support_update_columns() -> bool {
-        false
     }
 }
 
@@ -74,14 +74,14 @@ impl Model for Permission {
     fn plural_ident() -> &'static str {
         "permissions"
     }
+    fn support_update_columns() -> bool {
+        false
+    }
     fn owner(&self) -> &str {
         &self.owner
     }
     fn name(&self) -> &str {
         &self.name
-    }
-    fn support_update_columns() -> bool {
-        false
     }
 }
 
@@ -111,14 +111,14 @@ impl Model for Role {
     fn plural_ident() -> &'static str {
         "roles"
     }
+    fn support_update_columns() -> bool {
+        false
+    }
     fn owner(&self) -> &str {
         &self.owner
     }
     fn name(&self) -> &str {
         &self.name
-    }
-    fn support_update_columns() -> bool {
-        false
     }
 }
 

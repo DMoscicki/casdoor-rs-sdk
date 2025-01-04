@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::{Model, User};
 use anyhow::{Ok, Result};
 pub use oauth2::TokenResponse;
 use oauth2::{
@@ -9,8 +10,6 @@ use oauth2::{
 };
 use reqwest::{redirect, ClientBuilder};
 use serde::{Deserialize, Serialize};
-
-use crate::{Model, User};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
