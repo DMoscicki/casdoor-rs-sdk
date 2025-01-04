@@ -2,9 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Ok, Result};
 pub use oauth2::TokenResponse;
-use oauth2::{
-    basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType}, AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl
-};
+use oauth2::{basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType}, AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields, IntrospectionUrl, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl};
 use reqwest::{redirect, ClientBuilder};
 use serde::{Deserialize, Serialize};
 
@@ -73,7 +71,7 @@ pub type CasdoorClient<
     HasDeviceAuthUrl = EndpointNotSet,
     HasIntrospectionUrl = EndpointNotSet,
     HasRevocationUrl = EndpointNotSet,
-    HasTokenUrl = EndpointSet,
+    HasTokenUrl = EndpointNotSet,
 > = Client<
     BasicErrorResponse,
     CasdoorTokenResponse,
@@ -152,7 +150,7 @@ pub struct OAuth2Client {
 }
 
 impl OAuth2Client {
-    pub(crate) async fn new(client_id: ClientId, client_secret: ClientSecret, auth_url: AuthUrl, token_url: TokenUrl) -> Result<Self> {
+    pub(crate) async fn new(client_id: ClientId, client_secret: ClientSecret, auth_url: AuthUrl) -> Result<Self> {
         let http_client = ClientBuilder::new()
             .redirect(redirect::Policy::default())
             .build()
@@ -161,15 +159,15 @@ impl OAuth2Client {
         let client = CasdoorClient::new(client_id)
             .set_client_secret(client_secret)
             .set_auth_uri(auth_url)
-            .set_token_uri(token_url)
             .set_auth_type(AuthType::RequestBody);
 
         Ok(Self { client, http_client })
     }
 
-    pub async fn refresh_token(&self, refresh_token: RefreshToken) -> Result<CasdoorTokenResponse> {
+    pub async fn refresh_token(self, refresh_token: RefreshToken, token_url: TokenUrl) -> Result<CasdoorTokenResponse> {
         let token_res: CasdoorTokenResponse = self
             .client
+            .set_token_uri(token_url)
             .exchange_refresh_token(&refresh_token)
             .add_scope(Scope::new("read".to_string()))
             .request_async(&self.http_client)
@@ -178,9 +176,17 @@ impl OAuth2Client {
         Ok(token_res)
     }
 
-    pub async fn get_oauth_token(self, code: AuthorizationCode, redirect_url: RedirectUrl) -> Result<CasdoorTokenResponse> {
-        let token_res = self.client.set_redirect_uri(redirect_url).exchange_code(code).request_async(&self.http_client).await?;
+    pub async fn get_oauth_token(self, code: AuthorizationCode, redirect_url: RedirectUrl, token_url: TokenUrl) -> Result<CasdoorTokenResponse> {
+        let token_res = self.client.set_redirect_uri(redirect_url)
+            .set_token_uri(token_url).exchange_code(code).request_async(&self.http_client).await?;
 
         Ok(token_res)
+    }
+
+    pub async fn get_introspect(self, intro_url: IntrospectionUrl, token: &AccessToken) -> Result<BasicTokenIntrospectionResponse> {
+        let res = self.client.set_introspection_url(intro_url)
+            .introspect(token).request_async(&self.http_client).await?;
+
+        Ok(res)
     }
 }
