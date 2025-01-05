@@ -167,7 +167,8 @@ impl OAuth2Client {
         Ok(Self { client, http_client })
     }
 
-    pub async fn refresh_token(self, refresh_token: RefreshToken, token_url: TokenUrl) -> Result<CasdoorTokenResponse> {
+    pub async fn refresh_token(self, refresh_token: RefreshToken, token_url: TokenUrl)
+        -> Result<CasdoorTokenResponse> {
         let token_res: CasdoorTokenResponse = self
             .client
             .set_token_uri(token_url)
@@ -179,7 +180,8 @@ impl OAuth2Client {
         Ok(token_res)
     }
 
-    pub async fn get_oauth_token(self, code: AuthorizationCode, redirect_url: RedirectUrl, token_url: TokenUrl) -> Result<CasdoorTokenResponse> {
+    pub async fn get_oauth_token(self, code: AuthorizationCode, redirect_url: RedirectUrl, token_url: TokenUrl)
+        -> Result<CasdoorTokenResponse> {
         let token_res = self
             .client
             .set_redirect_uri(redirect_url)
@@ -191,7 +193,8 @@ impl OAuth2Client {
         Ok(token_res)
     }
 
-    pub async fn get_introspect(self, intro_url: IntrospectionUrl, token: &AccessToken) -> Result<BasicTokenIntrospectionResponse> {
+    pub async fn get_introspect_access_token(self, intro_url: IntrospectionUrl, token: &AccessToken)
+        -> Result<BasicTokenIntrospectionResponse> {
         let res = self
             .client
             .set_introspection_url(intro_url)

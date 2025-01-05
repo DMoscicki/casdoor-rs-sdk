@@ -1,17 +1,23 @@
 mod models;
 
-use crate::{ApiResponse, Method, Model, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, Status, StatusCode, NO_BODY};
-use jsonwebtoken::{errors::{Error, ErrorKind}, Algorithm, DecodingKey, TokenData, Validation};
+use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
+use anyhow::Result;
+use jsonwebtoken::{
+    errors::{Error, ErrorKind},
+    Algorithm, DecodingKey, TokenData, Validation,
+};
 pub use models::*;
-use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, RedirectUrl, RefreshToken, TokenUrl};
-use openssl::{base64, pkey::{PKey, Public}, sha::sha256};
+use oauth2::basic::BasicTokenIntrospectionResponse;
+use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, IntrospectionUrl, RedirectUrl, RefreshToken, TokenUrl};
+use openssl::{
+    base64,
+    pkey::{PKey, Public},
+    sha::sha256,
+};
 use rand::Rng;
 use std::{fmt::Write, iter};
-use std::collections::HashMap;
 use url::Url;
 use uuid::Uuid;
-use anyhow::Result;
-use crate::SdkInnerError::JwtError;
 
 impl Sdk {
     pub fn authn(&self) -> AuthSdk {
@@ -51,6 +57,24 @@ impl AuthSdk {
         Ok(TokenUrl::new(url)?)
     }
 
+    fn introspect_url(&self, url_path: &str) -> Result<IntrospectionUrl> {
+        let mut url = String::new();
+
+        url.write_str(&self.sdk.endpoint)?;
+        url.write_str(url_path)?;
+
+        Ok(IntrospectionUrl::new(url)?)
+    }
+
+    fn logout_url(&self, path: String) -> String {
+        let mut logout_url = String::new();
+
+        logout_url.write_str(&self.sdk.endpoint).unwrap();
+        logout_url.write_str(&path).unwrap();
+
+        logout_url
+    }
+
     /// Gets the pivotal and necessary secret to interact with the Casdoor server
     pub async fn get_oauth_token(&self, code: String) -> SdkResult<CasdoorTokenResponse> {
         let casdoor_client = OAuth2Client::new(self.client_id(), self.client_secret(), self.auth_url("/api/login/oauth/authorize")?)
@@ -60,7 +84,7 @@ impl AuthSdk {
         let token_res: CasdoorTokenResponse = casdoor_client
             .get_oauth_token(
                 AuthorizationCode::new(code),
-                RedirectUrl::new(self.sdk.endpoint.to_string()).unwrap(),
+                RedirectUrl::new(self.sdk.endpoint.to_string())?,
                 self.token_url("/api/login/oauth/access_token")?,
             )
             .await
@@ -83,6 +107,23 @@ impl AuthSdk {
         Ok(token_res)
     }
 
+    pub async fn introspect_access_token(&self, token: String) -> SdkResult<BasicTokenIntrospectionResponse> {
+        let client = OAuth2Client::new(self.client_id(), self.client_secret(), self.auth_url("/api/login/oauth/authorize")?)
+            .await
+            .unwrap();
+
+        let tk = AccessToken::new(token);
+
+        let intro_res = client
+            .get_introspect_access_token(self.introspect_url("/api/login/oauth/introspect").unwrap(), &tk)
+            .await
+            .unwrap();
+
+        drop(tk);
+
+        Ok(intro_res)
+    }
+
     pub fn parse_jwt_token(&self, token: &str) -> SdkResult<Claims> {
         let header = jsonwebtoken::decode_header(token)?;
 
@@ -91,7 +132,7 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        /// TODO: Add ES512 support after https://github.com/Keats/jsonwebtoken/issues/250#issuecomment-2488307814
+        // TODO: Add ES512 support after https://github.com/Keats/jsonwebtoken/issues/250#issuecomment-2488307814
         match header.alg {
             Algorithm::ES256 => {
                 let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
@@ -113,9 +154,7 @@ impl AuthSdk {
 
                 Ok(token_data.claims)
             }
-            _ => {
-                Err(SdkError::from(Error::from(ErrorKind::InvalidAlgorithm)))
-            }
+            _ => Err(SdkError::from(Error::from(ErrorKind::InvalidAlgorithm))),
         }
     }
 
@@ -143,19 +182,19 @@ impl AuthSdk {
         signing_url.to_string()
     }
 
-    pub async fn logout(self,
-        endpoint: &str,
-        id_token: &str,
-        post_logout_redirect_uri: &str,
-        state: &str) -> SdkResult<ApiResponse<HashMap<String, String>, HashMap<String,String>>> {
-        let logout_url = Url::parse_with_params(endpoint, &[
-            ("id_token_hint", id_token),
-            ("post_logout_redirect_uri", post_logout_redirect_uri),
-            ("state", state)
-        ])?;
+    pub async fn logout(&self, id_token: &str, post_logout_redirect_uri: &str, state: &str) -> SdkResult<String> {
+        let logout_url = Url::parse_with_params(
+            self.logout_url("/api/logout".to_string()).as_str(),
+            &[
+                ("id_token_hint", id_token),
+                ("post_logout_redirect_uri", post_logout_redirect_uri),
+                ("state", state),
+            ],
+        )?;
 
-        let response: ApiResponse<HashMap<String, String>, HashMap<String, String>> = self.sdk.
-            request(Method::POST, logout_url, NO_BODY).await?;
+        let client = reqwest::Client::new();
+
+        let response = client.post(logout_url).send().await?.text().await?;
 
         Ok(response)
     }
@@ -256,8 +295,7 @@ mod tests {
             "secret".to_string(),
             cert,
             "org_name".to_string(),
-            Some("app_name".to_owned()),
-            Some("domain".to_owned()),
+            Some("app_name".to_owned())
         )
         .into_sdk();
 
@@ -277,8 +315,7 @@ mod tests {
             "secret".to_string(),
             cert,
             "org_name".to_string(),
-            Some("app_name".to_owned()),
-            Some("domain".to_owned()),
+            Some("app_name".to_owned())
         )
         .into_sdk();
 
@@ -298,8 +335,7 @@ mod tests {
             "secret".to_string(),
             cert,
             "org_name".to_string(),
-            Some("app_name".to_owned()),
-            Some("domain".to_owned()),
+            Some("app_name".to_owned())
         )
         .into_sdk();
 
@@ -320,8 +356,7 @@ mod tests {
             "secret".to_string(),
             cert,
             "org_name".to_string(),
-            Some("app_name".to_owned()),
-            Some("domain".to_owned()),
+            Some("app_name".to_owned())
         )
         .into_sdk();
 
@@ -341,8 +376,7 @@ mod tests {
             "secret".to_string(),
             cert,
             "org_name".to_string(),
-            Some("app_name".to_owned()),
-            Some("domain".to_owned()),
+            Some("app_name".to_owned())
         )
         .into_sdk();
 
