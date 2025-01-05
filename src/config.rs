@@ -18,8 +18,6 @@ pub struct Config {
     pub org_name: String,
     /// The name for the Casdoor application
     pub app_name: Option<String>,
-    /// Application domain
-    pub domain: Option<String>,
 }
 
 impl Config {
@@ -31,7 +29,6 @@ impl Config {
         certificate: String,
         org_name: String,
         app_name: Option<String>,
-        domain: Option<String>,
     ) -> Self {
         Config {
             endpoint,
@@ -39,8 +36,7 @@ impl Config {
             client_secret,
             certificate,
             org_name,
-            app_name,
-            domain
+            app_name
         }
     }
 
