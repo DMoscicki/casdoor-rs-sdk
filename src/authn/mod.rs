@@ -7,7 +7,6 @@ use jsonwebtoken::{
     Algorithm, DecodingKey, TokenData, Validation,
 };
 pub use models::*;
-pub use oauth2::basic::BasicTokenIntrospectionResponse;
 use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, IntrospectionUrl, RedirectUrl, RefreshToken, TokenUrl};
 use openssl::{
     base64,
@@ -16,6 +15,7 @@ use openssl::{
 };
 use rand::Rng;
 use std::{fmt::Write, iter};
+pub use oauth2::{basic::BasicTokenIntrospectionResponse, TokenIntrospectionResponse};
 use url::Url;
 use uuid::Uuid;
 
