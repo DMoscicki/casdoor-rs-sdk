@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{Model, User};
-use anyhow::{Ok, Result};
+use anyhow::{Error, Ok, Result};
 pub use oauth2::TokenResponse;
 use oauth2::{
     basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType},
@@ -161,8 +161,7 @@ impl OAuth2Client {
 
         let client = CasdoorClient::new(client_id)
             .set_client_secret(client_secret)
-            .set_auth_uri(auth_url)
-            .set_auth_type(AuthType::RequestBody);
+            .set_auth_uri(auth_url);
 
         Ok(Self { client, http_client })
     }
@@ -171,6 +170,7 @@ impl OAuth2Client {
         -> Result<CasdoorTokenResponse> {
         let token_res: CasdoorTokenResponse = self
             .client
+            .set_auth_type(AuthType::RequestBody)
             .set_token_uri(token_url)
             .exchange_refresh_token(&refresh_token)
             .add_scope(Scope::new("read".to_string()))
@@ -184,6 +184,7 @@ impl OAuth2Client {
         -> Result<CasdoorTokenResponse> {
         let token_res = self
             .client
+            .set_auth_type(AuthType::RequestBody)
             .set_redirect_uri(redirect_url)
             .set_token_uri(token_url)
             .exchange_code(code)
@@ -197,6 +198,7 @@ impl OAuth2Client {
         -> Result<BasicTokenIntrospectionResponse> {
         let res = self
             .client
+            .set_auth_type(AuthType::BasicAuth)
             .set_introspection_url(intro_url)
             .introspect(token)
             .request_async(&self.http_client)

@@ -7,7 +7,7 @@ use jsonwebtoken::{
     Algorithm, DecodingKey, TokenData, Validation,
 };
 pub use models::*;
-use oauth2::basic::BasicTokenIntrospectionResponse;
+pub use oauth2::basic::BasicTokenIntrospectionResponse;
 use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, IntrospectionUrl, RedirectUrl, RefreshToken, TokenUrl};
 use openssl::{
     base64,
@@ -112,14 +112,12 @@ impl AuthSdk {
             .await
             .unwrap();
 
-        let tk = AccessToken::new(token);
+        let tk: AccessToken = AccessToken::new(token);
 
         let intro_res = client
             .get_introspect_access_token(self.introspect_url("/api/login/oauth/introspect").unwrap(), &tk)
             .await
             .unwrap();
-
-        drop(tk);
 
         Ok(intro_res)
     }
