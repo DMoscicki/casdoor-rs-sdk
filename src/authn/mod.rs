@@ -16,7 +16,7 @@ use openssl::{
 use rand::Rng;
 use std::{fmt::Write, iter};
 pub use oauth2::{basic::BasicTokenIntrospectionResponse, TokenIntrospectionResponse};
-use url::Url;
+use oauth2::url;
 use uuid::Uuid;
 
 impl Sdk {
@@ -127,6 +127,9 @@ impl AuthSdk {
 
         let mut validation = Validation::new(header.alg);
         validation.set_audience(&[&self.sdk.client_id]);
+        validation.validate_aud = true;
+        validation.validate_exp = true;
+        validation.validate_nbf = true;
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
@@ -162,7 +165,7 @@ impl AuthSdk {
         let base = format!("{}/login/oauth/authorize", self.sdk.endpoint);
         let nonce = Uuid::new_v4();
 
-        let signing_url = Url::parse_with_params(
+        let signing_url = url::Url::parse_with_params(
             base.as_str(),
             &[
                 ("client_id", self.client_id().as_str()),
@@ -181,7 +184,7 @@ impl AuthSdk {
     }
 
     pub async fn logout(&self, id_token: &str, post_logout_redirect_uri: &str, state: &str) -> SdkResult<String> {
-        let logout_url = Url::parse_with_params(
+        let logout_url = url::Url::parse_with_params(
             self.logout_url("/api/logout".to_string()).as_str(),
             &[
                 ("id_token_hint", id_token),
