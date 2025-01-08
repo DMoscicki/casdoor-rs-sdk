@@ -1,8 +1,10 @@
-Features:
+### Features:
 * Add openssl for parsing certificate and getting Public Key from it;
-* Delete cubix and salvio;
+* Delete `cubix` and `salvo` dependencies;
 * Delete getters;
 * Support decoding multiple jsonwebtoken algos;
+* Add JWT validation;
+* Write Casdoor OAuth2 client for getting access_token;
 
 This lib is not production ready, cause it use [OAuth2 Release candidate](https://github.com/ramosbugs/oauth2-rs/tree/5.0.0-rc.1) with big API update.
 Read more [here](https://github.com/ramosbugs/oauth2-rs/blob/main/UPGRADE.md).
@@ -16,6 +18,7 @@ A [Casdoor](https://github.com/casdoor/casdoor) SDK (contain APIs) with more com
 [![GitHub last commit](https://img.shields.io/github/last-commit/DMoscicki/casdoor-sdk-rust)](https://github.com/DMoscicki/casdoor-sdk-rust/commits/main)
 [![Crates.io](https://img.shields.io/crates/v/casdoor-sdk-rust.svg)](https://crates.io/crates/casdoor-sdk-rust)
 [![Docs](https://docs.rs/casdoor-sdk-rust/badge.svg)](https://docs.rs/casdoor-sdk-rust)
+[![CI](https://github.com/DMoscicki/casdoor-sdk-rust/actions/workflows/security_audit.yml/badge.svg)](https://github.com/DMoscicki/casdoor-sdk-rust/actions/workflows/security_audit.yml)
 
 ## Install
 
