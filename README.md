@@ -1,33 +1,42 @@
-# casdoor-rs-sdk
+Features:
+* Add openssl for parsing certificate and getting Public Key from it;
+* Delete cubix and salvio;
+* Delete getters;
+* Support decoding multiple jsonwebtoken algos;
+
+This lib is not production ready, cause it use [OAuth2 Release candidate](https://github.com/ramosbugs/oauth2-rs/tree/5.0.0-rc.1) with big API update.
+Read more [here](https://github.com/ramosbugs/oauth2-rs/blob/main/UPGRADE.md).
+
+Also, I started it for closing [RUSTSEC-2024-0421](https://rustsec.org/advisories/RUSTSEC-2024-0421.html).
+
+# casdoor-sdk-rust
 
 A [Casdoor](https://github.com/casdoor/casdoor) SDK (contain APIs) with more complete interfaces and better usability.
 
-[![GitHub last commit](https://img.shields.io/github/last-commit/andeya/casdoor-rs-sdk)](https://github.com/andeya/casdoor-rs-sdk/commits/main)
-[![Crates.io](https://img.shields.io/crates/v/casdoor-rs-sdk.svg)](https://crates.io/crates/casdoor-rs-sdk)
-[![Docs](https://docs.rs/casdoor-rs-sdk/badge.svg)](https://docs.rs/casdoor-rs-sdk)
+[![GitHub last commit](https://img.shields.io/github/last-commit/DMoscicki/casdoor-sdk-rust)](https://github.com/DMoscicki/casdoor-sdk-rust/commits/main)
+[![Crates.io](https://img.shields.io/crates/v/casdoor-sdk-rust.svg)](https://crates.io/crates/casdoor-sdk-rust)
+[![Docs](https://docs.rs/casdoor-sdk-rust/badge.svg)](https://docs.rs/casdoor-sdk-rust)
 
 ## Install
 
 Run the following Cargo command in your project directory:
 
 ```sh
-cargo add casdoor-rs-sdk
+cargo add casdoor-sdk-rust
 ```
 
 Or add the following line to your Cargo.toml:
 
 ```toml
-casdoor-rs-sdk = "2"
+casdoor-sdk-rust = "1"
 ```
-
-Also, `openssl` must be installed on your system.
 
 ## Example
 
 ```rust
 #[cfg(test)]
 mod tests {
-    use casdoor_rs_sdk::*;
+    use casdoor-sdk-rust::*;
 
     #[test]
     fn example() {
