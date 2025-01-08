@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{Model, User};
-use anyhow::{Error, Ok, Result};
+use anyhow::{Ok, Result};
 pub use oauth2::TokenResponse;
 use oauth2::{
     basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType},
@@ -63,7 +63,7 @@ impl ExtraTokenFields for CasdoorExtraTokenFields {}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CasdoorExtraTokenFields {
-    // This field only use in OpenID Connect
+    /// This field only use in OpenID Connect
     pub id_token: String,
 }
 
@@ -201,6 +201,7 @@ impl OAuth2Client {
             .set_auth_type(AuthType::BasicAuth)
             .set_introspection_url(intro_url)
             .introspect(token)
+            .set_token_type_hint("access_token")
             .request_async(&self.http_client)
             .await?;
 
