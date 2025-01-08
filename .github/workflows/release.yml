@@ -22,7 +22,7 @@ jobs:
           rustup default stable
 
       - name: Cargo Login
-        run: cargo login ${{ secrets.CARGO_TOKEN }}
+        run: cargo login ${{ secrets.CRATES_IO_API_TOKEN }}
 
       - name: Cargo Publish
         run: cargo publish

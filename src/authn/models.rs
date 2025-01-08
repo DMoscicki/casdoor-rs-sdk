@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use crate::{Model, User};
 use anyhow::{Ok, Result};
-pub use oauth2::TokenResponse;
 use oauth2::{
     basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType},
     AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields,
     IntrospectionUrl, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl,
+    TokenResponse
 };
 use reqwest::{redirect, ClientBuilder};
 use serde::{Deserialize, Serialize};
