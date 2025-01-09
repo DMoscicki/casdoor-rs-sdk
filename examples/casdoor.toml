@@ -1,0 +1,6 @@
+endpoint="http://localhost:8000"
+client_id="client_id"
+client_secret="client_secret"
+org_name="org_name"
+app_name="app_name"
+certificate="""certificate value"""
