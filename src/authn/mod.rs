@@ -121,7 +121,7 @@ impl AuthSdk {
         Ok(intro_res)
     }
 
-    pub fn parse_jwt_token(&self, token: &str) -> SdkResult<Claims> {
+    pub fn parse_jwt_token(&self, token: &str) -> SdkResult<ClaimsStandard> {
         let header = jsonwebtoken::decode_header(token)?;
 
         let mut validation = Validation::new(header.alg);
@@ -135,22 +135,22 @@ impl AuthSdk {
         // TODO: Add ES512 support after https://github.com/Keats/jsonwebtoken/issues/250#issuecomment-2488307814
         match header.alg {
             Algorithm::ES256 => {
-                let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
+                let token_data: TokenData<ClaimsStandard> = get_tk_es(pb_key, validation, token);
 
                 Ok(token_data.claims)
             }
             Algorithm::ES384 => {
-                let token_data: TokenData<Claims> = get_tk_es(pb_key, validation, token);
+                let token_data: TokenData<ClaimsStandard> = get_tk_es(pb_key, validation, token);
 
                 Ok(token_data.claims)
             }
             Algorithm::RS256 => {
-                let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
+                let token_data: TokenData<ClaimsStandard> = get_tk_rsa(pb_key, validation, token);
 
                 Ok(token_data.claims)
             }
             Algorithm::RS512 => {
-                let token_data: TokenData<Claims> = get_tk_rsa(pb_key, validation, token);
+                let token_data: TokenData<ClaimsStandard> = get_tk_rsa(pb_key, validation, token);
 
                 Ok(token_data.claims)
             }
@@ -264,18 +264,18 @@ fn generate_code_challange(verifier: String) -> String {
     base64::encode_block(&digest).replace("=", "-")
 }
 
-fn get_tk_es(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<Claims> {
+fn get_tk_es(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<ClaimsStandard> {
     let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
     let decode_key = &DecodingKey::from_ec_pem(&public_key).unwrap();
-    let token_data: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
+    let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
 
     token_data
 }
 
-fn get_tk_rsa(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<Claims> {
+fn get_tk_rsa(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<ClaimsStandard> {
     let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
     let decode_key = &DecodingKey::from_rsa_pem(&public_key).unwrap();
-    let td: TokenData<Claims> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
+    let td: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
 
     td
 }
@@ -286,7 +286,49 @@ mod tests {
     use crate::Config;
 
     #[test]
-    fn successfully_es256() {
+    fn successfully_es256_jwt_custom() {
+        let token = fs::read_to_string("./src/authn/testdata/tok_rs256_custom.txt").unwrap();
+        let cert = fs::read_to_string("./src/authn/testdata/cert_rs256_standart.txt").unwrap();
+        let cfg = Config::new(
+            "http://localhost:8000".to_string(),
+            "1c1e0a611af6f09cb383".to_string(),
+            "secret".to_string(),
+            cert,
+            "Kubernetes".to_string(),
+            Some("Cluster".to_owned())
+        )
+            .into_sdk();
+
+        let authnx = cfg.authn();
+
+        let tk = authnx.parse_jwt_token(&token).unwrap();
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
+        println!("{:#?}", tk);
+    }
+    #[test]
+    fn successfully_es256_jwt_standart() {
+        let token = fs::read_to_string("./src/authn/testdata/tok_rs256_standart.txt").unwrap();
+        let cert = fs::read_to_string("./src/authn/testdata/cert_rs256_standart.txt").unwrap();
+        let cfg = Config::new(
+            "http://localhost:8000".to_string(),
+            "1c1e0a611af6f09cb383".to_string(),
+            "secret".to_string(),
+            cert,
+            "Kubernetes".to_string(),
+            Some("Cluster".to_owned())
+        )
+            .into_sdk();
+
+        let authnx = cfg.authn();
+
+        let tk = authnx.parse_jwt_token(&token).unwrap();
+        assert_eq!("user", tk.user.display_name);
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
+        println!("{:#?}", tk);
+    }
+
+    #[test]
+    fn successfully_es256_jwt() {
         let token = fs::read_to_string("./src/authn/testdata/tok_es256.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es256.txt").unwrap();
         let cfg = Config::new(
@@ -303,10 +345,11 @@ mod tests {
 
         let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
     }
 
     #[test]
-    fn successfully_es384() {
+    fn successfully_es384_jwt() {
         let token = fs::read_to_string("./src/authn/testdata/tok_es384.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_es384.txt").unwrap();
         let cfg = Config::new(
@@ -323,10 +366,11 @@ mod tests {
 
         let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
     }
 
     #[test]
-    fn successfully_rs512() {
+    fn successfully_rs512_jwt() {
         let token = fs::read_to_string("./src/authn/testdata/tok_rs512.txt").unwrap();
         let cert = fs::read_to_string("./src/authn/testdata/cert_rs256.txt").unwrap();
         let cfg = Config::new(
@@ -343,6 +387,7 @@ mod tests {
 
         let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user1", tk.user.display_name);
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
     }
 
     #[test]

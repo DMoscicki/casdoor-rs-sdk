@@ -237,14 +237,14 @@ impl Model for User {
     fn plural_ident() -> &'static str {
         "users"
     }
+    fn support_update_columns() -> bool {
+        true
+    }
     fn owner(&self) -> &str {
         &self.owner
     }
     fn name(&self) -> &str {
         &self.name
-    }
-    fn support_update_columns() -> bool {
-        true
     }
 }
 

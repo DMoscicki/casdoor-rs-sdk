@@ -1,28 +1,139 @@
 use std::time::Duration;
-
+use chrono::{DateTime, Utc};
 use crate::{Model, User};
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use oauth2::{
     basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenType},
     AccessToken, AuthType, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, EndpointNotSet, EndpointSet, ExtraTokenFields,
     IntrospectionUrl, RedirectUrl, RefreshToken, Scope, StandardRevocableToken, StandardTokenResponse, TokenUrl,
     TokenResponse
 };
+use serde_with::{serde_as, TimestampSeconds};
 use reqwest::{redirect, ClientBuilder};
 use serde::{Deserialize, Serialize};
 
+type NumericDate = DateTime<Utc>;
+
+type ClaimStrings = Vec<String>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ValidationError {
+    #[error("token is expired")]
+    Expired,
+    #[error("token used before issued")]
+    IssuedAt,
+    #[error("token is not valid yet")]
+    NotValidYet,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
-pub struct Claims {
+pub struct ClaimsStandard {
     #[serde(flatten)]
     pub user: User,
-    pub access_token: String,
-    pub tag: String,
+    pub email_verified: bool,
+    pub phone_number: String,
+    pub phone_number_verified: bool,
+    pub gender: String,
     pub token_type: Option<String>,
     pub nonce: Option<String>,
     pub scope: Option<String>,
-    // #[serde(flatten)]
-    // pub reg_claims: RegisteredClaims,
+    pub address: OIDCAddress,
+    pub tag: String,
+    #[serde(flatten)]
+    pub reg_claims: RegisteredClaims,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct OIDCAddress {
+    #[serde(rename = "formatted")]
+    pub formatted: String,
+    #[serde(rename = "street_address")]
+    pub street_address: String,
+    #[serde(rename = "locality")]
+    pub locality: String,
+    #[serde(rename = "region")]
+    pub region: String,
+    #[serde(rename = "postal_code")]
+    pub postal_code: String,
+    #[serde(rename = "country")]
+    pub country: String,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
+pub struct RegisteredClaims {
+    #[serde(rename = "iss", skip_serializing_if = "Option::is_none")]
+    pub issuer: Option<String>,
+    #[serde(rename = "sub", skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    #[serde(rename = "aud", skip_serializing_if = "Vec::is_empty")]
+    pub audience: ClaimStrings,
+    #[serde(rename = "exp", skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<TimestampSeconds<i64>>")]
+    pub expires_at: Option<NumericDate>,
+    #[serde(rename = "nbf", skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<TimestampSeconds<i64>>")]
+    pub not_before: Option<NumericDate>,
+    #[serde(rename = "iat",skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<TimestampSeconds<i64>>")]
+    pub issued_at: Option<NumericDate>,
+    #[serde(rename = "jti", skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+}
+
+impl RegisteredClaims {
+    pub fn valid(&self) -> Result<(), ValidationError> {
+        let now = Utc::now();
+
+        if !self.verify_expires_at(now, false) {
+            return Err(ValidationError::Expired);
+        }
+
+        if !self.verify_issued_at(now, false) {
+            return Err(ValidationError::IssuedAt);
+        }
+
+        if !self.verify_not_before(now, false) {
+            return Err(ValidationError::NotValidYet);
+        }
+
+        Ok(())
+    }
+
+    pub fn verify_expires_at(&self, cmp: NumericDate, require: bool) -> bool {
+        if cmp.timestamp().eq(&0) {
+            return !require;
+        }
+        if let Some(exp) = self.expires_at {
+            return cmp < exp;
+        }
+
+        !require
+    }
+
+    pub fn verify_issued_at(&self, cmp: NumericDate, require: bool) -> bool {
+        if cmp.timestamp().eq(&0) {
+            return !require;
+        }
+        if let Some(iat) = self.issued_at {
+            return cmp >= iat;
+        }
+
+        !require
+    }
+    pub fn verify_not_before(&self, cmp: NumericDate, require: bool) -> bool {
+        if cmp.timestamp().eq(&0) {
+            return !require;
+        }
+        if let Some(nbf) = self.not_before {
+            return cmp >= nbf;
+        }
+
+        !require
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
