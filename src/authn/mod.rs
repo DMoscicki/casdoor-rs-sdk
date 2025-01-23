@@ -1,13 +1,14 @@
 mod models;
 
-use crate::{Method, QueryArgs, QueryResult, Sdk, SdkError, SdkResult, NO_BODY};
-use anyhow::Result;
+use crate::{Method, QueryArgs, QueryResult, Sdk, SdkResult, NO_BODY};
+use anyhow::{format_err, Result};
 use jsonwebtoken::{
-    errors::{Error, ErrorKind},
-    Algorithm, DecodingKey, TokenData, Validation,
+    DecodingKey, TokenData, Validation,
 };
 pub use models::*;
-use oauth2::{AccessToken, url, AuthUrl, AuthorizationCode, ClientId, ClientSecret, IntrospectionUrl, RedirectUrl, RefreshToken, TokenUrl};
+pub use oauth2::{basic::{BasicTokenIntrospectionResponse, BasicTokenType}, TokenIntrospectionResponse, TokenResponse};
+use oauth2::{url, AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, IntrospectionUrl, RedirectUrl, RefreshToken, TokenUrl};
+use openssl::pkey::Id;
 use openssl::{
     base64,
     pkey::{PKey, Public},
@@ -15,7 +16,6 @@ use openssl::{
 };
 use rand::Rng;
 use std::{fmt::Write, iter};
-pub use oauth2::{basic::{BasicTokenIntrospectionResponse, BasicTokenType}, TokenIntrospectionResponse, TokenResponse};
 use uuid::Uuid;
 
 impl Sdk {
@@ -132,30 +132,9 @@ impl AuthSdk {
 
         let pb_key = self.sdk.replace_cert_to_pub_key().unwrap();
 
-        // TODO: Add ES512 support after https://github.com/Keats/jsonwebtoken/issues/250#issuecomment-2488307814
-        match header.alg {
-            Algorithm::ES256 => {
-                let token_data: TokenData<ClaimsStandard> = get_tk_es(pb_key, validation, token);
+        let td = get_tk(pb_key, validation, token).unwrap();
 
-                Ok(token_data.claims)
-            }
-            Algorithm::ES384 => {
-                let token_data: TokenData<ClaimsStandard> = get_tk_es(pb_key, validation, token);
-
-                Ok(token_data.claims)
-            }
-            Algorithm::RS256 => {
-                let token_data: TokenData<ClaimsStandard> = get_tk_rsa(pb_key, validation, token);
-
-                Ok(token_data.claims)
-            }
-            Algorithm::RS512 => {
-                let token_data: TokenData<ClaimsStandard> = get_tk_rsa(pb_key, validation, token);
-
-                Ok(token_data.claims)
-            }
-            _ => Err(SdkError::from(Error::from(ErrorKind::InvalidAlgorithm))),
-        }
+        Ok(td.claims)
     }
 
     pub fn get_signing_url(&self, redirect_url: String) -> String {
@@ -264,26 +243,61 @@ fn generate_code_challange(verifier: String) -> String {
     base64::encode_block(&digest).replace("=", "-")
 }
 
-fn get_tk_es(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<ClaimsStandard> {
-    let public_key = pb_key.ec_key().unwrap().public_key_to_pem().unwrap();
-    let decode_key = &DecodingKey::from_ec_pem(&public_key).unwrap();
-    let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
+fn get_tk(pb_key: PKey<Public>, validation: Validation, token: &str) -> Result<TokenData<ClaimsStandard>> {
+    match pb_key.id() {
+        Id::RSA => {
+            let rsa_pb_key = pb_key.rsa()?.public_key_to_pem()?;
+            let decode_key = &DecodingKey::from_rsa_pem(&rsa_pb_key)?;
+            let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation)?;
 
-    token_data
+            Ok(token_data)
+        },
+        Id::EC => {
+            let ec_pb_key = pb_key.ec_key()?.public_key_to_pem()?;
+            let decode_key = &DecodingKey::from_ec_pem(&ec_pb_key)?;
+            let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation)?;
+
+            Ok(token_data)
+        },
+        Id::RSA_PSS => {
+            println!("{}", "RSA_PSS");
+            let ec_pb_key = pb_key.rsa()?.public_key_to_pem()?;
+            let decode_key = &DecodingKey::from_rsa_pem(&ec_pb_key)?;
+            let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation)?;
+
+            Ok(token_data)
+        },
+        _ => {
+            Err(format_err!("not supported"))
+        },
+    }
 }
 
-fn get_tk_rsa(pb_key: PKey<Public>, validation: Validation, token: &str) -> TokenData<ClaimsStandard> {
-    let public_key = pb_key.rsa().unwrap().public_key_to_pem().unwrap();
-    let decode_key = &DecodingKey::from_rsa_pem(&public_key).unwrap();
-    let td: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation).unwrap();
-
-    td
-}
 #[cfg(test)]
 mod tests {
     use std::fs;
 
     use crate::Config;
+
+    #[test]
+    fn successfully_rs256_cert_ps256() {
+        let token = fs::read_to_string("./src/authn/testdata/tok_rs256_ps.txt").unwrap();
+        let cert = fs::read_to_string("./src/authn/testdata/cert_ps256.txt").unwrap();
+        let cfg = Config::new(
+            "http://localhost:8000".to_string(),
+            "2707072ef8e8048ce2df".to_string(),
+            "7d315de093a1b8268d0c7eb192bbe02f35a8877d".to_string(),
+            cert,
+            "built-in".to_string(),
+            Some("app-built-in".to_owned())
+        )
+            .into_sdk();
+
+        let authnx = cfg.authn();
+
+        let tk = authnx.parse_jwt_token(&token).unwrap();
+        assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
+    }
 
     #[test]
     fn successfully_es256_jwt_custom() {
@@ -303,7 +317,6 @@ mod tests {
 
         let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
-        println!("{:#?}", tk);
     }
     #[test]
     fn successfully_es256_jwt_standart() {
@@ -324,7 +337,6 @@ mod tests {
         let tk = authnx.parse_jwt_token(&token).unwrap();
         assert_eq!("user", tk.user.display_name);
         assert_eq!(true, tk.reg_claims.audience.contains(&cfg.client_id));
-        println!("{:#?}", tk);
     }
 
     #[test]
