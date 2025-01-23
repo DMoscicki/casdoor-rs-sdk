@@ -8,7 +8,7 @@ repository = "https://github.com/DMoscicki/casdoor-sdk-rust"
 documentation = "https://docs.rs/casdoor-sdk-rust"
 readme = "README.md"
 homepage = "https://casdoor.org"
-keywords = ["iam", "auth", "sso", "oidc", "casdoor"]
+keywords = ["iam", "auth", "sso", "oidc", "casdoor", "oauth2"]
 authors = ["Dmitrii Mastitckii <dimulgator@outlook.com>"]
 
 [dev-dependencies]
@@ -21,7 +21,7 @@ serde_json = "1.0"
 serde_urlencoded = "0.7"
 reqwest = { version = "0.12", features = ["json"] }
 jsonwebtoken = "9.3.0"
-oauth2 = "5.0.0-rc.1"
+oauth2 = "5.0.0"
 toml = "0.8"
 openssl = "0.10"
 anyhow = "1.0.95"
