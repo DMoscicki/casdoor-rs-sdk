@@ -6,7 +6,7 @@
 * Add JWT validation;
 * Write Casdoor OAuth2 client for getting access_token;
 
-This lib is not production ready, cause it use [OAuth2 Release candidate](https://github.com/ramosbugs/oauth2-rs/tree/5.0.0-rc.1) with big API update.
+This lib use latest [OAuth2 Release](https://github.com/ramosbugs/oauth2-rs/tree/5.0.0) with big API update.
 Read more [here](https://github.com/ramosbugs/oauth2-rs/blob/main/UPGRADE.md).
 
 Also, I started it for closing [RUSTSEC-2024-0421](https://rustsec.org/advisories/RUSTSEC-2024-0421.html).

@@ -260,7 +260,6 @@ fn get_tk(pb_key: PKey<Public>, validation: Validation, token: &str) -> Result<T
             Ok(token_data)
         },
         Id::RSA_PSS => {
-            println!("{}", "RSA_PSS");
             let ec_pb_key = pb_key.rsa()?.public_key_to_pem()?;
             let decode_key = &DecodingKey::from_rsa_pem(&ec_pb_key)?;
             let token_data: TokenData<ClaimsStandard> = jsonwebtoken::decode(token, decode_key, &validation)?;
