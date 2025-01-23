@@ -8,7 +8,7 @@ repository = "https://github.com/DMoscicki/casdoor-sdk-rust"
 documentation = "https://docs.rs/casdoor-sdk-rust"
 readme = "README.md"
 homepage = "https://casdoor.org"
-keywords = ["iam", "auth", "sso", "oidc", "casdoor", "oauth2"]
+keywords = ["iam", "auth", "sso", "casdoor", "oauth2"]
 authors = ["Dmitrii Mastitckii <dimulgator@outlook.com>"]
 
 [dev-dependencies]
