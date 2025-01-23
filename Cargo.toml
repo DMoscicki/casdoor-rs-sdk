@@ -1,6 +1,6 @@
 [package]
 name = "casdoor-sdk-rust"
-version = "1.0.3"
+version = "1.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A Casdoor SDK (contain APIs) with more complete interfaces and better usability."
@@ -23,7 +23,7 @@ reqwest = { version = "0.12", features = ["json"] }
 jsonwebtoken = "9.3.0"
 oauth2 = "5.0.0-rc.1"
 toml = "0.8"
-openssl = "0.10.68"
+openssl = "0.10"
 anyhow = "1.0.95"
 rand = "0.8"
 chrono = "0.4.39"
@@ -31,7 +31,7 @@ thiserror = "2.0.11"
 serde_with = { version = "3.12.0", features = ["chrono_0_4"] }
 
 [dependencies.uuid]
-version = "1.11.0"
+version = "1.12.1"
 features = [
     "v4",
     "fast-rng",
